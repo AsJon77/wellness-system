@@ -1,0 +1,293 @@
+/* PAYMENT SELECT BASE */
+.payment-select .ant-select-selector {
+  border-radius: 8px !important;
+  border: none !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  padding-inline: 8px !important;
+}
+
+/* EMPTY */
+.payment-empty .ant-select-selector {
+  background: #e5e7eb !important;
+  color: #111 !important;
+}
+
+/* CASH */
+.payment-cash .ant-select-selector {
+  background: #1f9d55 !important;
+  color: white !important;
+}
+
+/* CARD */
+.payment-card .ant-select-selector {
+  background: #4b5563 !important;
+  color: white !important;
+}
+
+/* TNG */
+.payment-tng .ant-select-selector {
+  background: #1668dc !important;
+  color: white !important;
+}
+
+/* SHOOTING */
+.payment-free .ant-select-selector {
+  background: #d2d906 !important;
+  color: white !important;
+}
+
+/* Selected text color */
+.payment-select .ant-select-selection-item {
+  color: inherit !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  font-size: smaller !important;
+}
+
+/* Arrow color */
+.payment-cash .ant-select-arrow,
+.payment-card .ant-select-arrow,
+.payment-tng .ant-select-arrow,
+.payment-shooting .ant-select-arrow {
+  color: white !important;
+}
+
+.payment-empty .ant-select-arrow {
+  color: #111 !important;
+}
+/* Export button */
+.print-area {
+  background: white;
+  padding: 16px;
+}
+
+@media print {
+  .no-print {
+    display: none;
+  }
+}
+
+.print-header-only {
+  display: none;
+}
+@page {
+  size: A3 landscape;
+  margin: 6mm;
+  text-align: center;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* Force full width */
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .ant-layout,
+  .ant-layout-content,
+  .ant-layout-header {
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .print-header-only {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #fff !important;
+    border-bottom: none !important;
+    padding: 0 0 8px 0 !important;
+    margin-bottom: 8px !important;
+    height: auto !important;
+  }
+
+  .print-title {
+    font-size: 15px !important;
+    font-weight: bold !important;
+  }
+
+  .print-date {
+    font-size: 13px !important;
+    font-weight: bold !important;
+  }
+
+  /* IMPORTANT: 2 columns x 4 rows */
+  print-area.ant-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+  }
+
+  .ant-col {
+    width: calc(50% - 4px) !important;
+    max-width: calc(50% - 4px) !important;
+    flex: 0 0 calc(50% - 4px) !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .ant-card {
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin: 0 !important;
+  }
+
+  .ant-card-body {
+    padding: 0 !important;
+  }
+
+  /* Make inputs print clean */
+  .ant-input,
+  .ant-input-number,
+  .ant-input-number-input,
+  .ant-select-selector,
+  .ant-picker,
+  .ant-picker-input > input {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: #000 !important;
+    font-size: 10px !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+  .ant-select-arrow,
+  .ant-picker-suffix,
+  .ant-picker-clear,
+  .ant-select-clear,
+  .ant-input-clear-icon {
+    display: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    font-size: 10px !important;
+  }
+  /* Prevent content overflow */
+  * {
+    box-sizing: border-box;
+  }
+
+  th,
+  td {
+    border: 1px solid #999 !important;
+    padding: 3px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Make rows taller for better fill */
+  td {
+    height: 26px !important;
+  }
+
+  th {
+    font-weight: bold !important;
+    font-size: 10px !important;
+  }
+  .summary-print-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 4px 0 !important;
+    margin-top: 17px !important;
+    padding: 4px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .summary-print-box th,
+  .summary-print-box td {
+    padding: 2px 4px !important;
+    font-size: 9px !important;
+  }
+}
+.centered-input-number .ant-input-number-input {
+  text-align: center;
+}
+
+.package-select .ant-select-selector {
+  border: none !important;
+  background: transparent !important;
+  padding-inline: 2px !important;
+  text-align: center !important;
+}
+
+.package-select .ant-select-selection-item,
+.package-select .ant-select-selection-placeholder {
+  text-align: center !important;
+  font-size: 12px !important;
+}
+
+.package-select .ant-select-selection-search-input,
+.package-select .ant-input {
+  text-align: center !important;
+  font-size: 12px !important;
+}
+
+body {
+  background: #f5f7fa;
+}
+
+.chart-card {
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 🔥 THIS FIXES YOUR BUG */
+.small-chart {
+  width: 150px;
+  overflow: hidden;
+}
+
+/* ✅ MOBILE RESPONSIVE */
+@media (max-width: 768px) {
+  .print-area {
+    padding: 8px !important;
+  }
+
+  .print-col {
+    width: 100% !important;
+  }
+
+  .ant-card {
+    border-radius: 8px !important;
+  }
+
+  table {
+    font-size: 11px !important;
+  }
+
+  .ant-input,
+  .ant-input-number,
+  .ant-picker,
+  .ant-select-selector {
+    font-size: 11px !important;
+  }
+
+  .summary-print-box {
+    overflow-x: auto;
+  }
+}
