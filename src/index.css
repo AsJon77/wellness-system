@@ -245,6 +245,65 @@
   font-size: 12px !important;
 }
 
+.view-only-mode .ant-input[disabled],
+.view-only-mode .ant-input-number-disabled,
+.view-only-mode .ant-input-number-disabled .ant-input-number-input,
+.view-only-mode .ant-picker-disabled,
+.view-only-mode .ant-picker-disabled input,
+.view-only-mode .ant-select-disabled .ant-select-selector,
+.view-only-mode .ant-select-disabled .ant-select-selection-item,
+.view-only-mode .ant-select-disabled .ant-select-selection-placeholder {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background: #fff !important;
+  opacity: 1 !important;
+}
+
+.view-only-mode .ant-input[disabled]::placeholder,
+.view-only-mode .ant-picker-disabled input::placeholder {
+  color: #6b7280 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+.view-only-mode .payment-cash .ant-select-selector {
+  background: #1f9d55 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.view-only-mode .payment-card .ant-select-selector {
+  background: #4b5563 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.view-only-mode .payment-tng .ant-select-selector {
+  background: #1668dc !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+.view-only-mode .payment-select .ant-select-selection-item {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+.view-only-mode .ant-picker-disabled .ant-picker-suffix,
+.view-only-mode .ant-select-disabled .ant-select-arrow {
+  color: #4b5563 !important;
+  opacity: 1 !important;
+}
+
+.view-only-mode .toolbar-actions .ant-picker,
+.view-only-mode .toolbar-actions .ant-picker input,
+.view-only-mode .toolbar-actions .ant-picker .ant-picker-suffix {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background: #fff !important;
+  opacity: 1 !important;
+}
+
 body {
   background: #f5f7fa;
 }
@@ -264,20 +323,125 @@ body {
 
 /* ✅ MOBILE RESPONSIVE */
 @media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
   .print-area {
-    padding: 8px !important;
+    padding: 6px !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-toolbar {
+    position: static !important;
+    padding: 10px 8px !important;
+    gap: 8px !important;
+    overflow-x: hidden !important;
+  }
+
+  .app-toolbar h2 {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+  }
+
+  .toolbar-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    white-space: normal !important;
+  }
+
+  .toolbar-actions .ant-picker {
+    width: 134px !important;
+  }
+
+  .toolbar-actions .ant-btn {
+    height: 32px !important;
+    padding-inline: 10px !important;
+    font-size: 12px !important;
   }
 
   .print-col {
     width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
   }
 
   .ant-card {
     border-radius: 8px !important;
   }
 
-  table {
-    font-size: 11px !important;
+  .therapist-table-wrap {
+    overflow-x: hidden !important;
+  }
+
+  .therapist-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 9px !important;
+    table-layout: fixed !important;
+  }
+
+  .therapist-table th,
+  .therapist-table td {
+    min-width: 0 !important;
+    padding: 2px 1px !important;
+    line-height: 1.12 !important;
+    height: 28px !important;
+    word-break: normal !important;
+  }
+
+  .therapist-table .ant-picker {
+    width: 47px !important;
+    padding: 0 1px !important;
+  }
+
+  .therapist-table .ant-picker-input > input {
+    font-size: 9px !important;
+    text-align: center !important;
+  }
+
+  .therapist-table .ant-picker-suffix {
+    display: none !important;
+  }
+
+  .therapist-table .ant-input,
+  .therapist-table .ant-input-number,
+  .therapist-table .ant-input-number-input,
+  .therapist-table .ant-select-selector {
+    font-size: 9px !important;
+    padding: 0 !important;
+    text-align: center !important;
+  }
+
+  .therapist-table .ant-input-number {
+    width: 34px !important;
+  }
+
+  .therapist-table .package-select {
+    width: 100% !important;
+  }
+
+  .therapist-table .payment-select {
+    width: 48px !important;
+  }
+
+  .therapist-table .payment-select .ant-select-selector {
+    padding-inline: 2px !important;
+  }
+
+  .therapist-table .payment-select .ant-select-selection-item {
+    font-size: 9px !important;
+    padding-inline-end: 8px !important;
+  }
+
+  .therapist-table .ant-select-arrow {
+    right: 3px !important;
   }
 
   .ant-input,

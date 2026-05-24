@@ -109,31 +109,11 @@ const TherapistTable: React.FC = () => {
   const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("user");
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
-  };
-
-  const getUserRole = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return "user";
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (error) {
-      console.error("Role fetch error:", error);
-      return "user";
-    }
-
-    return data?.role || "user";
   };
 
   const loadUserInfo = async () => {
@@ -141,7 +121,13 @@ const TherapistTable: React.FC = () => {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      setUserEmail(null);
+      setUserRole("user");
+      setIsAdmin(false);
+      setRoleLoaded(true);
+      return;
+    }
 
     setUserEmail(user.email || "");
 
@@ -149,14 +135,22 @@ const TherapistTable: React.FC = () => {
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Role fetch error:", error);
       setUserRole("user");
+      setIsAdmin(false);
     } else {
-      setUserRole(data?.role || "user");
+      const role = String(data?.role || "user")
+        .trim()
+        .toLowerCase();
+
+      setUserRole(role);
+      setIsAdmin(role === "admin");
     }
+
+    setRoleLoaded(true);
   };
 
   const isSavingRef = useRef(false);
@@ -165,6 +159,8 @@ const TherapistTable: React.FC = () => {
 
   const skipNextRealtimeRef = useRef(false);
   const pendingSaveRef = useRef(false);
+  const remoteUpdateRef = useRef(false);
+  const hasLocalChangesRef = useRef(false);
 
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,7 +189,16 @@ const TherapistTable: React.FC = () => {
   // ✅ FIX 1: Remove isEditing state entirely — it was blocking saves
   // We now use a pure debounce approach instead
 
+  const markLocalChange = () => {
+    hasLocalChangesRef.current = true;
+    remoteUpdateRef.current = false;
+  };
+
   const addRow = (therapistId: number) => {
+    if (!isAdmin) return;
+
+    markLocalChange();
+
     setTherapists((prev) =>
       prev.map((t) => {
         if (t.id !== therapistId) return t;
@@ -241,6 +246,9 @@ const TherapistTable: React.FC = () => {
       setServerUpdatedAt(data.updated_at);
     }
 
+    hasLocalChangesRef.current = false;
+    pendingSaveRef.current = false;
+    remoteUpdateRef.current = false;
     setIsConflict(false);
     setLoading(false);
   };
@@ -248,8 +256,6 @@ const TherapistTable: React.FC = () => {
   // check user role on load
   useEffect(() => {
     const init = async () => {
-      const role = await getUserRole();
-      setIsAdmin(role === "admin");
       await loadUserInfo();
     };
 
@@ -280,6 +286,9 @@ const TherapistTable: React.FC = () => {
         setTherapists(createInitialTherapists());
         setSummary({ laundry: "", note: "" });
         setServerUpdatedAt(null);
+        hasLocalChangesRef.current = false;
+        pendingSaveRef.current = false;
+        remoteUpdateRef.current = false;
         setLoading(false);
         return;
       }
@@ -288,6 +297,9 @@ const TherapistTable: React.FC = () => {
       setSummary(data.data?.summary || { laundry: "", note: "" });
       setServerUpdatedAt(data.updated_at || null);
       setServerVersion(data.updated_at || null);
+      hasLocalChangesRef.current = false;
+      pendingSaveRef.current = false;
+      remoteUpdateRef.current = false;
       setLoading(false);
     };
 
@@ -336,6 +348,7 @@ const TherapistTable: React.FC = () => {
             note: "",
           };
 
+          remoteUpdateRef.current = true;
           setTherapists(newTherapists);
           setSummary(newSummary);
 
@@ -352,6 +365,7 @@ const TherapistTable: React.FC = () => {
 
   useEffect(() => {
     if (!selectedDate || loading) return;
+    if (!roleLoaded) return;
     if (!isAdmin) return;
 
     // ✅ FIX 4: Check ANY meaningful data — title, packageName, entries, summary
@@ -379,12 +393,22 @@ const TherapistTable: React.FC = () => {
 
     // Save quickly so a selected payment/package is less likely to be lost on refresh.
     const timeout = setTimeout(async () => {
+      if (remoteUpdateRef.current) {
+        remoteUpdateRef.current = false;
+        hasLocalChangesRef.current = false;
+        setSaveStatus("idle");
+        return;
+      }
+
+      if (!hasLocalChangesRef.current) return;
+
       if (isSavingRef.current) {
         pendingSaveRef.current = true;
         return;
       }
 
       isSavingRef.current = true;
+      hasLocalChangesRef.current = false;
       setSaveStatus("saving");
 
       try {
@@ -428,6 +452,7 @@ const TherapistTable: React.FC = () => {
 
         if (error) {
           console.error("Save failed:", error);
+          hasLocalChangesRef.current = true;
 
           if (retryCountRef.current < 5) {
             retryCountRef.current += 1;
@@ -465,11 +490,12 @@ const TherapistTable: React.FC = () => {
         }, 2000);
       } catch (err) {
         console.error(err);
+        hasLocalChangesRef.current = true;
         setSaveStatus("error");
       } finally {
         isSavingRef.current = false;
 
-        if (pendingSaveRef.current) {
+        if (pendingSaveRef.current || hasLocalChangesRef.current) {
           pendingSaveRef.current = false;
           setTherapists((prev) => [...prev]);
         }
@@ -477,10 +503,14 @@ const TherapistTable: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [therapists, summary, selectedDate, loading]);
+  }, [therapists, summary, selectedDate, loading, roleLoaded, isAdmin]);
   // ✅ FIX 6: serverVersion removed from deps — it caused save loops
 
   const updateTitle = (therapistId: number, value: string) => {
+    if (!isAdmin) return;
+
+    markLocalChange();
+
     // ✅ No triggerEditing needed — just update state, autosave handles it
     setTherapists((prev) =>
       prev.map((item) =>
@@ -495,6 +525,10 @@ const TherapistTable: React.FC = () => {
     field: keyof Entry,
     value: string | number,
   ) => {
+    if (!isAdmin) return;
+
+    markLocalChange();
+
     // ✅ user currently typing
     isTypingRef.current = true;
 
@@ -579,6 +613,8 @@ const TherapistTable: React.FC = () => {
   };
 
   const clearAllData = async () => {
+    if (!isAdmin) return;
+
     const confirmed = window.confirm(`Are you sure?\n\nThis cannot be undone.`);
 
     if (!confirmed) return;
@@ -588,6 +624,9 @@ const TherapistTable: React.FC = () => {
 
       setTherapists(emptyTherapists);
       setSummary({ laundry: "", note: "" });
+      hasLocalChangesRef.current = false;
+      pendingSaveRef.current = false;
+      remoteUpdateRef.current = false;
       setServerVersion(null);
       setServerUpdatedAt(null);
 
@@ -673,9 +712,13 @@ const TherapistTable: React.FC = () => {
   }, []);
 
   return (
-    <div ref={printRef} className="print-area" style={{ paddingTop: "10px" }}>
+    <div
+      ref={printRef}
+      className={`print-area ${!isAdmin ? "view-only-mode" : ""}`}
+      style={{ paddingTop: "10px" }}
+    >
       <div
-        className="no-print"
+        className="no-print app-toolbar"
         style={{
           position: "sticky",
           top: 0,
@@ -704,6 +747,7 @@ const TherapistTable: React.FC = () => {
         </div>
 
         <div
+          className="toolbar-actions"
           style={{
             display: "flex",
             alignItems: "center",
@@ -717,7 +761,7 @@ const TherapistTable: React.FC = () => {
             <DatePicker
               value={selectedDate ? dayjs(selectedDate) : null}
               format="YYYY-MM-DD"
-              disabled={!isAdmin}
+              disabled={false}
               onChange={(date) => {
                 if (date) {
                   setSelectedDate(date.format("YYYY-MM-DD"));
@@ -736,7 +780,11 @@ const TherapistTable: React.FC = () => {
               fontWeight: 600,
             }}
           >
-            {userRole.toUpperCase()}
+            {roleLoaded
+              ? userRole === "admin"
+                ? "ADMIN"
+                : "VIEW ONLY"
+              : "CHECKING..."}
           </span>
 
           <Button
@@ -789,27 +837,33 @@ const TherapistTable: React.FC = () => {
             }}
             onClick={() => navigate("/dashboard")}
             type="default"
-            disabled={!isAdmin}
+            disabled={!roleLoaded}
           >
             📊 Dashboard
           </Button>
 
           <div style={{ marginLeft: 10 }}>
-            {saveStatus === "saving" && (
+            {!roleLoaded && (
+              <span style={{ color: "#999" }}>Checking role...</span>
+            )}
+            {roleLoaded && !isAdmin && (
+              <span style={{ color: "#999" }}>Read only</span>
+            )}
+            {roleLoaded && isAdmin && saveStatus === "saving" && (
               <span style={{ color: "#faad14" }}>⏳ Saving...</span>
             )}
-            {saveStatus === "saved" && (
+            {roleLoaded && isAdmin && saveStatus === "saved" && (
               <span style={{ color: "#52c41a" }}>
                 ✅ Saved{lastSavedAt && ` at ${lastSavedAt}`}
               </span>
             )}
-            {saveStatus === "retrying" && (
+            {roleLoaded && isAdmin && saveStatus === "retrying" && (
               <span style={{ color: "#fa8c16" }}>🔄 Retrying...</span>
             )}
-            {saveStatus === "error" && (
+            {roleLoaded && isAdmin && saveStatus === "error" && (
               <span style={{ color: "#ff4d4f" }}>❌ Error</span>
             )}
-            {saveStatus === "idle" && (
+            {roleLoaded && isAdmin && saveStatus === "idle" && (
               <span style={{ color: "#999" }}>
                 ✔ Update{lastSavedAt && ` (${lastSavedAt})`}
               </span>
@@ -905,6 +959,7 @@ const TherapistTable: React.FC = () => {
                   >
                     <Spin spinning={loading}>
                       <div
+                        className="therapist-table-wrap"
                         style={{
                           width: "100%",
                           overflowX: "auto",
@@ -912,9 +967,10 @@ const TherapistTable: React.FC = () => {
                         }}
                       >
                         <table
+                          className="therapist-table"
                           style={{
                             width: "100%",
-                            minWidth: "600px",
+                            minWidth: 0,
                             borderCollapse: "collapse",
                             tableLayout: "fixed",
                             fontSize: "12px",
@@ -1252,6 +1308,8 @@ const TherapistTable: React.FC = () => {
                 disabled={!isAdmin}
                 value={summary.laundry}
                 onChange={(e) => {
+                  if (!isAdmin) return;
+                  markLocalChange();
                   setSummary((prev) => ({ ...prev, laundry: e.target.value }));
                 }}
                 size="small"
@@ -1271,6 +1329,8 @@ const TherapistTable: React.FC = () => {
                 disabled={!isAdmin}
                 value={summary.note}
                 onChange={(e) => {
+                  if (!isAdmin) return;
+                  markLocalChange();
                   setSummary((prev) => ({ ...prev, note: e.target.value }));
                 }}
                 size="small"
