@@ -1200,22 +1200,35 @@ const TherapistTable: React.FC = () => {
                                   {!isAdmin ? (
                                     <div
                                       style={{
-                                        width: "80px",
+                                        width: "72px",
+                                        height: "24px",
                                         margin: "0 auto",
-                                        padding: "4px 0",
                                         borderRadius: "6px",
+
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+
                                         fontWeight: 700,
                                         fontSize: "12px",
-                                        textAlign: "center",
+                                        lineHeight: 1,
+
                                         color: "#fff",
+
+                                        boxSizing: "border-box",
+
                                         backgroundColor:
-                                          entry.payment === "CASH"
+                                          entry.payment?.toUpperCase() ===
+                                          "CASH"
                                             ? "#22c55e"
-                                            : entry.payment === "CARD"
-                                            ? "#6b7280"
-                                            : entry.payment === "TNG"
-                                            ? "#3b82f6"
-                                            : entry.payment === "FREE"
+                                            : entry.payment?.toUpperCase() ===
+                                              "CARD"
+                                            ? "#4b5563"
+                                            : entry.payment?.toUpperCase() ===
+                                              "TNG"
+                                            ? "#1668dc"
+                                            : entry.payment?.toUpperCase() ===
+                                              "FREE"
                                             ? "#f97316"
                                             : "#d1d5db",
                                       }}
