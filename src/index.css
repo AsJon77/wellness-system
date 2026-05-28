@@ -72,7 +72,7 @@
   display: none;
 }
 @page {
-  size: A3 landscape;
+  size: A3 portrait;
   margin: 6mm;
   text-align: center;
 }
@@ -453,5 +453,24 @@ body {
 
   .summary-print-box {
     overflow-x: auto;
+  }
+
+  /* Show payment text clearly in VIEW ONLY mode */
+  .view-only-mode .ant-select-selector {
+    background: #ffffff !important;
+  }
+
+  .view-only-mode .ant-select-selection-item {
+    color: #111827 !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+  }
+
+  .view-only-mode .ant-select-disabled {
+    color: #111827 !important;
+  }
+
+  .view-only-mode .ant-select-disabled .ant-select-selection-item {
+    color: #111827 !important;
   }
 }

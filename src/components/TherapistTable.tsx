@@ -1197,35 +1197,62 @@ const TherapistTable: React.FC = () => {
                                 </td>
 
                                 <td style={tdStyle}>
-                                  <Select
-                                    disabled={!isAdmin}
-                                    value={entry.payment || undefined}
-                                    onChange={(value) =>
-                                      updateEntry(
-                                        therapist.id,
-                                        index,
-                                        "payment",
-                                        value ?? "",
-                                      )
-                                    }
-                                    size="small"
-                                    placeholder=""
-                                    allowClear
-                                    style={{
-                                      width: "80px",
-                                      display: "block",
-                                      margin: "0 auto",
-                                    }}
-                                    popupMatchSelectWidth={false}
-                                    dropdownStyle={{ borderRadius: "10px" }}
-                                    options={paymentOptions.map((item) => ({
-                                      label: item,
-                                      value: item,
-                                    }))}
-                                    className={`payment-select payment-${
-                                      entry.payment?.toLowerCase() || "empty"
-                                    }`}
-                                  />
+                                  {!isAdmin ? (
+                                    <div
+                                      style={{
+                                        width: "80px",
+                                        margin: "0 auto",
+                                        padding: "4px 0",
+                                        borderRadius: "6px",
+                                        fontWeight: 700,
+                                        fontSize: "12px",
+                                        textAlign: "center",
+                                        color: "#fff",
+                                        backgroundColor:
+                                          entry.payment === "CASH"
+                                            ? "#22c55e"
+                                            : entry.payment === "CARD"
+                                            ? "#6b7280"
+                                            : entry.payment === "TNG"
+                                            ? "#3b82f6"
+                                            : entry.payment === "FREE"
+                                            ? "#f97316"
+                                            : "#d1d5db",
+                                      }}
+                                    >
+                                      {entry.payment || "-"}
+                                    </div>
+                                  ) : (
+                                    <Select
+                                      disabled={!isAdmin}
+                                      value={entry.payment || undefined}
+                                      onChange={(value) =>
+                                        updateEntry(
+                                          therapist.id,
+                                          index,
+                                          "payment",
+                                          value ?? "",
+                                        )
+                                      }
+                                      size="small"
+                                      placeholder=""
+                                      allowClear
+                                      style={{
+                                        width: "80px",
+                                        display: "block",
+                                        margin: "0 auto",
+                                      }}
+                                      popupMatchSelectWidth={false}
+                                      dropdownStyle={{ borderRadius: "10px" }}
+                                      options={paymentOptions.map((item) => ({
+                                        label: item,
+                                        value: item,
+                                      }))}
+                                      className={`payment-select payment-${
+                                        entry.payment?.toLowerCase() || "empty"
+                                      }`}
+                                    />
+                                  )}
                                 </td>
                               </tr>
                             ))}
