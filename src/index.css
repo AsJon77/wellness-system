@@ -182,6 +182,98 @@ body {
   overflow: hidden;
 }
 
+.pdf-export {
+  width: 1500px !important;
+  max-width: 1500px !important;
+  padding: 6px !important;
+  background: #fff !important;
+}
+
+.pdf-export .no-print {
+  display: none !important;
+}
+
+.pdf-export .app-toolbar {
+  display: flex !important;
+  position: static !important;
+  top: auto !important;
+  margin-bottom: 10px !important;
+  padding: 8px 12px !important;
+  gap: 10px !important;
+  box-shadow: none !important;
+  border: 1px solid #e5e7eb !important;
+  overflow: visible !important;
+}
+
+.pdf-export .app-toolbar h2 {
+  font-size: 22px !important;
+}
+
+.pdf-export .toolbar-actions {
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.pdf-export .toolbar-actions .ant-btn {
+  height: 30px !important;
+  padding-inline: 12px !important;
+  font-size: 12px !important;
+}
+
+.pdf-export .toolbar-actions .ant-picker {
+  height: 30px !important;
+}
+
+.pdf-export .print-col {
+  width: 50% !important;
+  max-width: 50% !important;
+  flex: 0 0 50% !important;
+}
+
+.pdf-export .ant-row {
+  row-gap: 8px !important;
+}
+
+.pdf-export .ant-card {
+  box-shadow: none !important;
+}
+
+.pdf-export .therapist-table-wrap {
+  overflow: hidden !important;
+}
+
+.pdf-export .therapist-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  table-layout: fixed !important;
+  font-size: 13px !important;
+}
+
+.pdf-export .therapist-table th,
+.pdf-export .therapist-table td {
+  padding: 4px 3px !important;
+  line-height: 1.15 !important;
+}
+
+.pdf-export .therapist-table .ant-picker {
+  width: 70px !important;
+  padding: 0 2px !important;
+}
+
+.pdf-export .therapist-table .ant-picker-input > input,
+.pdf-export .therapist-table .ant-input,
+.pdf-export .therapist-table .ant-input-number-input,
+.pdf-export .therapist-table .ant-select-selection-item {
+  font-size: 12px !important;
+  text-align: center !important;
+}
+
+.pdf-export .summary-print-box {
+  margin-top: 8px !important;
+  padding: 8px !important;
+}
+
 /* ✅ MOBILE RESPONSIVE */
 @media (max-width: 768px) {
   html,
@@ -390,7 +482,7 @@ body {
   }
 
   @page {
-    size: auto;
+    size: A3 landscape;
     margin: 5mm;
   }
   .print-area {

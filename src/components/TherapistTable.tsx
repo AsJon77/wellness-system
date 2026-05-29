@@ -676,28 +676,85 @@ const TherapistTable: React.FC = () => {
     if (!printRef.current) return;
 
     const canvas = await html2canvas(printRef.current, {
+      backgroundColor: "#ffffff",
+      logging: false,
+      onclone: (clonedDocument) => {
+        clonedDocument
+          .querySelector(".print-area")
+          ?.classList.add("pdf-export");
+      },
       scale: 2,
+      scrollX: 0,
+      scrollY: 0,
       useCORS: true,
+      windowWidth: 1500,
     });
 
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("p", "mm", "a4");
+    const trimBottomWhitespace = (sourceCanvas: HTMLCanvasElement) => {
+      const context = sourceCanvas.getContext("2d");
 
-    const imgWidth = 210;
-    const pageHeight = 297;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      if (!context) return sourceCanvas;
+
+      const { width, height } = sourceCanvas;
+      const pixels = context.getImageData(0, 0, width, height).data;
+      let bottom = height - 1;
+
+      for (; bottom >= 0; bottom -= 1) {
+        let hasInk = false;
+
+        for (let x = 0; x < width; x += 8) {
+          const index = (bottom * width + x) * 4;
+          const red = pixels[index];
+          const green = pixels[index + 1];
+          const blue = pixels[index + 2];
+          const alpha = pixels[index + 3];
+
+          if (alpha > 0 && (red < 248 || green < 248 || blue < 248)) {
+            hasInk = true;
+            break;
+          }
+        }
+
+        if (hasInk) break;
+      }
+
+      const bottomPadding = 24;
+      const trimmedHeight = Math.min(height, bottom + bottomPadding);
+
+      if (trimmedHeight >= height) return sourceCanvas;
+
+      const trimmedCanvas = document.createElement("canvas");
+      trimmedCanvas.width = width;
+      trimmedCanvas.height = trimmedHeight;
+      trimmedCanvas
+        .getContext("2d")
+        ?.drawImage(sourceCanvas, 0, 0, width, trimmedHeight, 0, 0, width, trimmedHeight);
+
+      return trimmedCanvas;
+    };
+
+    const finalCanvas = trimBottomWhitespace(canvas);
+    const imgData = finalCanvas.toDataURL("image/png");
+    const pdf = new jsPDF("l", "mm", "a3");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 4;
+    const imgWidth = pageWidth - margin * 2;
+    const usablePageHeight = pageHeight - margin * 2;
+    const imgHeight = (finalCanvas.height * imgWidth) / finalCanvas.width;
 
     let heightLeft = imgHeight;
-    let position = 0;
+    let position = margin;
 
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+    pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+    heightLeft -= usablePageHeight;
 
     while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
+      position = margin - (imgHeight - heightLeft);
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+      heightLeft -= usablePageHeight;
     }
 
     pdf.save(`wellness-${selectedDate}.pdf`);
