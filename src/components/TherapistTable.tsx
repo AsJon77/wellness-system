@@ -728,21 +728,42 @@ const TherapistTable: React.FC = () => {
       trimmedCanvas.height = trimmedHeight;
       trimmedCanvas
         .getContext("2d")
-        ?.drawImage(sourceCanvas, 0, 0, width, trimmedHeight, 0, 0, width, trimmedHeight);
+        ?.drawImage(
+          sourceCanvas,
+          0,
+          0,
+          width,
+          trimmedHeight,
+          0,
+          0,
+          width,
+          trimmedHeight,
+        );
 
       return trimmedCanvas;
     };
 
     const finalCanvas = trimBottomWhitespace(canvas);
     const imgData = finalCanvas.toDataURL("image/png");
-    const pdf = new jsPDF("l", "mm", "a3");
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 4;
-    const imgWidth = pageWidth - margin * 2;
-    const usablePageHeight = pageHeight - margin * 2;
+    const margin = 3;
+    const maxPageWidth = 420;
+    const maxPageHeight = 297;
+    const minPageHeight = 160;
+    const imgWidth = maxPageWidth - margin * 2;
     const imgHeight = (finalCanvas.height * imgWidth) / finalCanvas.width;
+    const pageHeightForContent = Math.min(
+      maxPageHeight,
+      Math.max(minPageHeight, imgHeight + margin * 2),
+    );
+
+    const pdf = new jsPDF({
+      orientation: "l",
+      unit: "mm",
+      format: [maxPageWidth, pageHeightForContent],
+    });
+
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const usablePageHeight = pageHeight - margin * 2;
 
     let heightLeft = imgHeight;
     let position = margin;
@@ -1352,7 +1373,7 @@ const TherapistTable: React.FC = () => {
                     </Spin>
                   </Card>
                   <div
-                    className="no-print"
+                    className="no-print pdf-add-row"
                     style={{
                       display: "flex",
                       justifyContent: "space-between",

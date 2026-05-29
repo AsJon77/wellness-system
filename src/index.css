@@ -205,6 +205,18 @@ body {
   overflow: visible !important;
 }
 
+.pdf-export .pdf-add-row {
+  display: flex !important;
+  padding: 1px 0 3px !important;
+}
+
+.pdf-export .pdf-add-row .ant-btn {
+  height: 20px !important;
+  padding: 0 6px !important;
+  font-size: 12px !important;
+  color: #1677ff !important;
+}
+
 .pdf-export .app-toolbar h2 {
   font-size: 22px !important;
 }
@@ -231,7 +243,7 @@ body {
 }
 
 .pdf-export .ant-row {
-  row-gap: 8px !important;
+  row-gap: 6px !important;
 }
 
 .pdf-export .ant-card {
