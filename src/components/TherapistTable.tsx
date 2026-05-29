@@ -714,7 +714,9 @@ const TherapistTable: React.FC = () => {
   return (
     <div
       ref={printRef}
-      className={`print-area ${!isAdmin ? "view-only-mode" : ""}`}
+      className={`print-area page-container ${
+        !isAdmin ? "view-only-mode" : ""
+      }`}
       style={{ paddingTop: "10px" }}
     >
       <div
@@ -947,6 +949,7 @@ const TherapistTable: React.FC = () => {
                   className="print-col"
                 >
                   <Card
+                    className="therapist-card"
                     bodyStyle={{ padding: 0 }}
                     style={{
                       border: "1px solid #999",
@@ -1201,7 +1204,7 @@ const TherapistTable: React.FC = () => {
                                     <div
                                       style={{
                                         width: "72px",
-                                        height: "24px",
+                                        height: "26px",
                                         margin: "0 auto",
                                         borderRadius: "6px",
 
@@ -1210,12 +1213,16 @@ const TherapistTable: React.FC = () => {
                                         justifyContent: "center",
 
                                         fontWeight: 700,
-                                        fontSize: "12px",
+                                        fontSize: "11px",
                                         lineHeight: 1,
 
                                         color: "#fff",
 
                                         boxSizing: "border-box",
+                                        padding: "0 6px",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
 
                                         backgroundColor:
                                           entry.payment?.toUpperCase() ===

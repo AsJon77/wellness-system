@@ -5,6 +5,7 @@
   font-weight: bold !important;
   text-align: center !important;
   padding-inline: 8px !important;
+  min-height: 28px !important;
 }
 
 /* EMPTY */
@@ -31,7 +32,7 @@
   color: white !important;
 }
 
-/* SHOOTING */
+/* free */
 .payment-free .ant-select-selector {
   background: #d2d906 !important;
   color: white !important;
@@ -43,185 +44,25 @@
   font-weight: bold !important;
   text-align: center !important;
   font-size: smaller !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
 }
 
 /* Arrow color */
 .payment-cash .ant-select-arrow,
 .payment-card .ant-select-arrow,
 .payment-tng .ant-select-arrow,
-.payment-shooting .ant-select-arrow {
+.payment-free .ant-select-arrow {
   color: white !important;
 }
 
 .payment-empty .ant-select-arrow {
   color: #111 !important;
 }
-/* Export button */
-.print-area {
-  background: white;
-  padding: 16px;
-}
 
-@media print {
-  .no-print {
-    display: none;
-  }
-}
-
-.print-header-only {
-  display: none;
-}
-@page {
-  size: A3 portrait;
-  margin: 6mm;
-  text-align: center;
-}
-
-@media print {
-  html,
-  body {
-    background: #fff !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  /* Force full width */
-  .print-container {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .no-print {
-    display: none !important;
-  }
-
-  .ant-layout,
-  .ant-layout-content,
-  .ant-layout-header {
-    background: #fff !important;
-    box-shadow: none !important;
-  }
-
-  .print-header-only {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    background: #fff !important;
-    border-bottom: none !important;
-    padding: 0 0 8px 0 !important;
-    margin-bottom: 8px !important;
-    height: auto !important;
-  }
-
-  .print-title {
-    font-size: 15px !important;
-    font-weight: bold !important;
-  }
-
-  .print-date {
-    font-size: 13px !important;
-    font-weight: bold !important;
-  }
-
-  /* IMPORTANT: 2 columns x 4 rows */
-  print-area.ant-row {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    row-gap: 8px !important;
-    column-gap: 8px !important;
-  }
-
-  .ant-col {
-    width: calc(50% - 4px) !important;
-    max-width: calc(50% - 4px) !important;
-    flex: 0 0 calc(50% - 4px) !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  .ant-card {
-    box-shadow: none !important;
-    border: 1px solid #999 !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    margin: 0 !important;
-  }
-
-  .ant-card-body {
-    padding: 0 !important;
-  }
-
-  /* Make inputs print clean */
-  .ant-input,
-  .ant-input-number,
-  .ant-input-number-input,
-  .ant-select-selector,
-  .ant-picker,
-  .ant-picker-input > input {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    color: #000 !important;
-    font-size: 10px !important;
-    padding: 0 !important;
-    min-height: auto !important;
-    height: auto !important;
-  }
-
-  .ant-select-arrow,
-  .ant-picker-suffix,
-  .ant-picker-clear,
-  .ant-select-clear,
-  .ant-input-clear-icon {
-    display: none !important;
-  }
-
-  table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-    table-layout: fixed !important;
-    font-size: 10px !important;
-  }
-  /* Prevent content overflow */
-  * {
-    box-sizing: border-box;
-  }
-
-  th,
-  td {
-    border: 1px solid #999 !important;
-    padding: 3px !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    line-height: 1.2 !important;
-  }
-
-  /* Make rows taller for better fill */
-  td {
-    height: 26px !important;
-  }
-
-  th {
-    font-weight: bold !important;
-    font-size: 10px !important;
-  }
-  .summary-print-box {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 4px 0 !important;
-    margin-top: 17px !important;
-    padding: 4px !important;
-    font-size: 9px !important;
-    line-height: 1.1 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .summary-print-box th,
-  .summary-print-box td {
-    padding: 2px 4px !important;
-    font-size: 9px !important;
-  }
-}
 .centered-input-number .ant-input-number-input {
   text-align: center;
 }
@@ -243,6 +84,26 @@
 .package-select .ant-input {
   text-align: center !important;
   font-size: 12px !important;
+}
+
+.payment-view-box {
+  width: 72px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto;
+
+  border-radius: 6px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  color: white;
+
+  text-align: center;
 }
 
 .view-only-mode .ant-input[disabled],
@@ -472,5 +333,61 @@ body {
 
   .view-only-mode .ant-select-disabled .ant-select-selection-item {
     color: #111827 !important;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #root {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .page-container {
+    width: 100% !important;
+    padding: 8px !important;
+    margin: 0 !important;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+
+  .therapist-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 4px !important;
+  }
+
+  button {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .ant-select-selector {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-col {
+    margin-bottom: 4px !important;
+  }
+
+  .ant-row {
+    row-gap: 4px !important;
+  }
+
+  .ant-card {
+    margin-bottom: 0 !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
   }
 }
