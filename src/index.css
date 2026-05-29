@@ -341,21 +341,24 @@ body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
+
+    height: auto !important;
+    min-height: auto !important;
+    overflow: hidden !important;
   }
 
   #root {
     padding: 0 !important;
     margin: 0 !important;
+
+    height: auto !important;
+    min-height: auto !important;
   }
 
   .page-container {
     width: 100% !important;
     padding: 8px !important;
     margin: 0 !important;
-  }
-
-  table {
-    page-break-inside: avoid;
   }
 
   .therapist-card {
@@ -387,7 +390,22 @@ body {
   }
 
   @page {
-    size: A4 portrait;
-    margin: 8mm;
+    size: auto;
+    margin: 5mm;
+  }
+  .print-area {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  .page-container {
+    height: auto !important;
+    min-height: auto !important;
+  }
+
+  .ant-layout {
+    height: auto !important;
+    min-height: auto !important;
   }
 }
