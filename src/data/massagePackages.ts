@@ -20,6 +20,11 @@ export const massagePackages: MassagePackage[] = [
     durationMinutes: null,
   },
   {
+    code: "MC",
+    label: "MC - Medical leave",
+    durationMinutes: null,
+  },
+  {
     code: "F30",
     label: "F30 - Foot massage 30 mins",
     durationMinutes: 30,

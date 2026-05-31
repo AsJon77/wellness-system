@@ -167,17 +167,32 @@ const Dashboard: React.FC = () => {
           0,
         );
 
+        const statuses = Array.from(
+          new Set(
+            therapist.entries
+              .map((e: any) => String(e.packageName || "").trim().toUpperCase())
+              .filter((packageName: string) =>
+                ["OFF", "MC"].includes(packageName),
+              ),
+          ),
+        );
+
         return {
           date: record.date,
+          statuses,
           total,
         };
       })
       .filter(
-        (item): item is { date: string; total: number } =>
-          item !== null && item.total > 0,
+        (item): item is { date: string; statuses: string[]; total: number } =>
+          item !== null,
       )
       .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
   }, [filteredRecords, selectedTherapist]);
+
+  const openDailyRecord = (date: string) => {
+    navigate(`/?date=${date}`);
+  };
 
   // 📈 TODAY vs YESTERDAY
   const today = dayjs().format("YYYY-MM-DD");
@@ -401,9 +416,30 @@ const Dashboard: React.FC = () => {
           <tbody>
             {selectedTherapistBreakdown.map((item) => {
               return (
-                <tr key={item.date}>
+                <tr
+                  key={item.date}
+                  onClick={() => openDailyRecord(item.date)}
+                  title="Open this date in daily table"
+                  style={{ cursor: "pointer" }}
+                >
                   <td>{item.date}</td>
-                  <td style={{ textAlign: "right" }}>{item.total} RM</td>
+                  <td style={{ textAlign: "right" }}>
+                    {item.statuses.length > 0 && (
+                      <div
+                        style={{
+                          color: item.statuses.includes("MC")
+                            ? "#d97706"
+                            : "#dc2626",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          marginTop: 2,
+                        }}
+                      >
+                        {item.statuses.join(" / ")}
+                      </div>
+                    )}
+                    {item.statuses.length === 0 && <div>{item.total} RM</div>}
+                  </td>
                 </tr>
               );
             })}

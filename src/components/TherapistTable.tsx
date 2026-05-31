@@ -165,7 +165,17 @@ const TherapistTable: React.FC = () => {
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(
-    dayjs().format("YYYY-MM-DD"),
+    () => {
+      const dateFromUrl = new URLSearchParams(window.location.search).get(
+        "date",
+      );
+
+      return dateFromUrl &&
+        /^\d{4}-\d{2}-\d{2}$/.test(dateFromUrl) &&
+        dayjs(dateFromUrl).isValid()
+        ? dateFromUrl
+        : dayjs().format("YYYY-MM-DD");
+    },
   );
 
   const [saveStatus, setSaveStatus] = useState<
@@ -559,7 +569,7 @@ const TherapistTable: React.FC = () => {
         if (field === "packageName") {
           updatedEntry.packageName = String(value).toUpperCase();
 
-          if (updatedEntry.packageName === "OFF") {
+          if (["OFF", "MC"].includes(updatedEntry.packageName)) {
             updatedEntry.timeIn = "";
             updatedEntry.timeOut = "";
           }
