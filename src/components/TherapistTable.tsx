@@ -667,12 +667,13 @@ const TherapistTable: React.FC = () => {
       therapist.entries.forEach((entry) => {
         const total = Number(entry.total) || 0;
         const payment = (entry.payment || "").toUpperCase();
+        const isCollectedPayment = ["CASH", "CARD", "TNG"].includes(payment);
 
         if (payment === "CASH") acc.cash += total;
         if (payment === "CARD") acc.card += total;
         if (payment === "TNG") acc.tng += total;
 
-        acc.grand += total;
+        if (isCollectedPayment) acc.grand += total;
       });
 
       return acc;
@@ -997,19 +998,24 @@ const TherapistTable: React.FC = () => {
           {Array.isArray(therapists) &&
             therapists.length > 0 &&
             therapists.map((therapist) => {
-              const totalRm = therapist.entries.reduce(
+              const collectedEntries = therapist.entries.filter((e) =>
+                ["CASH", "CARD", "TNG"].includes(
+                  String(e.payment || "").toUpperCase(),
+                ),
+              );
+              const totalRm = collectedEntries.reduce(
                 (sum, e) => sum + (Number(e.rm) || 0),
                 0,
               );
-              const totalCoupon = therapist.entries.reduce(
+              const totalCoupon = collectedEntries.reduce(
                 (sum, e) => sum + (Number(e.coupon) || 0),
                 0,
               );
-              const totalOil = therapist.entries.reduce(
+              const totalOil = collectedEntries.reduce(
                 (sum, e) => sum + (Number(e.oil) || 0),
                 0,
               );
-              const grandTotal = therapist.entries.reduce(
+              const grandTotal = collectedEntries.reduce(
                 (sum, e) => sum + (Number(e.total) || 0),
                 0,
               );

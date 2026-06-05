@@ -57,7 +57,11 @@ const Dashboard: React.FC = () => {
       therapists.reduce(
         (tSum: number, t: any) =>
           tSum +
-          t.entries.reduce((s: number, e: any) => s + (Number(e.rm) || 0), 0),
+          t.entries.reduce((s: number, e: any) => {
+            const payment = String(e.payment || "").trim().toLowerCase();
+            if (payment === "free") return s;
+            return s + (Number(e.rm) || 0);
+          }, 0),
         0,
       )
     );
@@ -72,10 +76,11 @@ const Dashboard: React.FC = () => {
       therapists.reduce(
         (tSum: number, t: any) =>
           tSum +
-          t.entries.reduce(
-            (s: number, e: any) => s + (Number(e.coupon) || 0),
-            0,
-          ),
+          t.entries.reduce((s: number, e: any) => {
+            const payment = String(e.payment || "").trim().toLowerCase();
+            if (payment === "free") return s;
+            return s + (Number(e.coupon) || 0);
+          }, 0),
         0,
       )
     );
@@ -109,7 +114,10 @@ const Dashboard: React.FC = () => {
 
   // ✅ Build therapist map (clean)
   const therapistMap = useMemo(() => {
-    const map: Record<string, { rm: number; oil: number; total: number }> = {};
+    const map: Record<
+      string,
+      { rm: number; oil: number; free: number; total: number }
+    > = {};
 
     filteredRecords.forEach((record) => {
       const therapists = record.data?.therapists || [];
@@ -118,13 +126,23 @@ const Dashboard: React.FC = () => {
         if (!t.title) return;
 
         if (!map[t.title]) {
-          map[t.title] = { rm: 0, oil: 0, total: 0 };
+          map[t.title] = { rm: 0, oil: 0, free: 0, total: 0 };
         }
 
         t.entries.forEach((e: any) => {
-          map[t.title].rm += Number(e.rm) || 0;
-          map[t.title].oil += Number(e.oil) || 0;
-          map[t.title].total += Number(e.total) || 0;
+          const payment = String(e.payment || "").trim().toLowerCase();
+          const rm = Number(e.rm) || 0;
+          const oil = Number(e.oil) || 0;
+          const total = Number(e.total) || 0;
+
+          if (payment === "free") {
+            map[t.title].free += total;
+            return;
+          }
+
+          map[t.title].rm += rm;
+          map[t.title].oil += oil;
+          map[t.title].total += total;
         });
       });
     });
@@ -134,16 +152,18 @@ const Dashboard: React.FC = () => {
 
   // ✅ Check if any data
   const hasData = Object.values(therapistMap).some(
-    (v) => v.rm > 0 || v.oil > 0 || v.total > 0,
+    (v) => v.rm > 0 || v.oil > 0 || v.free > 0 || v.total > 0,
   );
 
   const sortedTherapists = useMemo(
     () =>
       Object.entries(therapistMap)
-        .filter(([_, v]) => v.rm > 0 || v.oil > 0 || v.total > 0)
+        .filter(([_, v]) => v.rm > 0 || v.oil > 0 || v.free > 0 || v.total > 0)
         .sort(([nameA, valuesA], [nameB, valuesB]) => {
-          const salaryA = valuesA.rm * (commission / 100) + valuesA.oil;
-          const salaryB = valuesB.rm * (commission / 100) + valuesB.oil;
+          const salaryA =
+            valuesA.rm * (commission / 100) + valuesA.oil + valuesA.free;
+          const salaryB =
+            valuesB.rm * (commission / 100) + valuesB.oil + valuesB.free;
 
           if (salaryB !== salaryA) return salaryB - salaryA;
 
@@ -364,7 +384,7 @@ const Dashboard: React.FC = () => {
         <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
           {sortedTherapists.map(([name, values]) => {
             const commissionSalary = values.rm * (commission / 100);
-            const salary = commissionSalary + values.oil;
+            const salary = commissionSalary + values.oil + values.free;
 
             return (
               <Col xs={24} sm={12} md={12} lg={8} xl={6} key={name}>
@@ -391,6 +411,12 @@ const Dashboard: React.FC = () => {
                   {values.oil > 0 && (
                     <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
                       OIL/HS20/NETT: {values.oil} RM (0%)
+                    </div>
+                  )}
+
+                  {values.free > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+                      FREE: {values.free} RM (0%)
                     </div>
                   )}
 
