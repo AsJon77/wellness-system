@@ -109,7 +109,7 @@ const Dashboard: React.FC = () => {
 
   // ✅ Build therapist map (clean)
   const therapistMap = useMemo(() => {
-    const map: Record<string, { rm: number; total: number }> = {};
+    const map: Record<string, { rm: number; oil: number; total: number }> = {};
 
     filteredRecords.forEach((record) => {
       const therapists = record.data?.therapists || [];
@@ -118,11 +118,12 @@ const Dashboard: React.FC = () => {
         if (!t.title) return;
 
         if (!map[t.title]) {
-          map[t.title] = { rm: 0, total: 0 };
+          map[t.title] = { rm: 0, oil: 0, total: 0 };
         }
 
         t.entries.forEach((e: any) => {
           map[t.title].rm += Number(e.rm) || 0;
+          map[t.title].oil += Number(e.oil) || 0;
           map[t.title].total += Number(e.total) || 0;
         });
       });
@@ -133,16 +134,16 @@ const Dashboard: React.FC = () => {
 
   // ✅ Check if any data
   const hasData = Object.values(therapistMap).some(
-    (v) => v.rm > 0 || v.total > 0,
+    (v) => v.rm > 0 || v.oil > 0 || v.total > 0,
   );
 
   const sortedTherapists = useMemo(
     () =>
       Object.entries(therapistMap)
-        .filter(([_, v]) => v.rm > 0 && v.total > 0)
+        .filter(([_, v]) => v.rm > 0 || v.oil > 0 || v.total > 0)
         .sort(([nameA, valuesA], [nameB, valuesB]) => {
-          const salaryA = valuesA.rm * (commission / 100);
-          const salaryB = valuesB.rm * (commission / 100);
+          const salaryA = valuesA.rm * (commission / 100) + valuesA.oil;
+          const salaryB = valuesB.rm * (commission / 100) + valuesB.oil;
 
           if (salaryB !== salaryA) return salaryB - salaryA;
 
@@ -362,7 +363,8 @@ const Dashboard: React.FC = () => {
       ) : (
         <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
           {sortedTherapists.map(([name, values]) => {
-            const salary = values.rm * (commission / 100);
+            const commissionSalary = values.rm * (commission / 100);
+            const salary = commissionSalary + values.oil;
 
             return (
               <Col xs={24} sm={12} md={12} lg={8} xl={6} key={name}>
@@ -385,6 +387,12 @@ const Dashboard: React.FC = () => {
                   <div style={{ marginTop: 6, fontSize: 13, opacity: 0.7 }}>
                     🏢 Total: {values.total} RM
                   </div>
+
+                  {values.oil > 0 && (
+                    <div style={{ marginTop: 6, fontSize: 13, opacity: 0.8 }}>
+                      OIL/HS20/NETT: {values.oil} RM (0%)
+                    </div>
+                  )}
 
                   {/* SALARY */}
                   <div style={{ marginTop: 10 }}>Salary ({commission}%)</div>

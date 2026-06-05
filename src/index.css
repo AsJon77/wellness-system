@@ -197,9 +197,9 @@ body {
   display: flex !important;
   position: static !important;
   top: auto !important;
-  margin-bottom: 10px !important;
-  padding: 8px 12px !important;
-  gap: 10px !important;
+  margin-bottom: 6px !important;
+  padding: 6px 10px !important;
+  gap: 8px !important;
   box-shadow: none !important;
   border: 1px solid #e5e7eb !important;
   overflow: visible !important;
@@ -218,7 +218,7 @@ body {
 }
 
 .pdf-export .app-toolbar h2 {
-  font-size: 22px !important;
+  font-size: 20px !important;
 }
 
 .pdf-export .toolbar-actions {
@@ -227,13 +227,13 @@ body {
 }
 
 .pdf-export .toolbar-actions .ant-btn {
-  height: 30px !important;
-  padding-inline: 12px !important;
-  font-size: 12px !important;
+  height: 28px !important;
+  padding-inline: 10px !important;
+  font-size: 11px !important;
 }
 
 .pdf-export .toolbar-actions .ant-picker {
-  height: 30px !important;
+  height: 28px !important;
 }
 
 .pdf-export .print-col {
@@ -243,7 +243,7 @@ body {
 }
 
 .pdf-export .ant-row {
-  row-gap: 6px !important;
+  row-gap: 4px !important;
 }
 
 .pdf-export .ant-card {
@@ -259,13 +259,13 @@ body {
   min-width: 0 !important;
   max-width: none !important;
   table-layout: fixed !important;
-  font-size: 13px !important;
+  font-size: 12px !important;
 }
 
 .pdf-export .therapist-table th,
 .pdf-export .therapist-table td {
-  padding: 4px 3px !important;
-  line-height: 1.15 !important;
+  padding: 3px 2px !important;
+  line-height: 1.1 !important;
 }
 
 .pdf-export .therapist-table .ant-picker {
@@ -282,8 +282,8 @@ body {
 }
 
 .pdf-export .summary-print-box {
-  margin-top: 8px !important;
-  padding: 8px !important;
+  margin-top: 5px !important;
+  padding: 6px !important;
 }
 
 /* ✅ MOBILE RESPONSIVE */

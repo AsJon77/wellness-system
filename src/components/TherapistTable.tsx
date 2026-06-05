@@ -755,38 +755,26 @@ const TherapistTable: React.FC = () => {
 
     const finalCanvas = trimBottomWhitespace(canvas);
     const imgData = finalCanvas.toDataURL("image/png");
-    const margin = 3;
+    const margin = 2;
     const maxPageWidth = 420;
     const maxPageHeight = 297;
-    const minPageHeight = 160;
-    const imgWidth = maxPageWidth - margin * 2;
-    const imgHeight = (finalCanvas.height * imgWidth) / finalCanvas.width;
-    const pageHeightForContent = Math.min(
-      maxPageHeight,
-      Math.max(minPageHeight, imgHeight + margin * 2),
-    );
+    const usablePageWidth = maxPageWidth - margin * 2;
+    const usablePageHeight = maxPageHeight - margin * 2;
+    const widthRatio = usablePageWidth / finalCanvas.width;
+    const heightRatio = usablePageHeight / finalCanvas.height;
+    const fitRatio = Math.min(widthRatio, heightRatio);
+    const imgWidth = finalCanvas.width * fitRatio;
+    const imgHeight = finalCanvas.height * fitRatio;
+    const xPosition = margin + (usablePageWidth - imgWidth) / 2;
+    const yPosition = margin + (usablePageHeight - imgHeight) / 2;
 
     const pdf = new jsPDF({
       orientation: "l",
       unit: "mm",
-      format: [maxPageWidth, pageHeightForContent],
+      format: [maxPageWidth, maxPageHeight],
     });
 
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const usablePageHeight = pageHeight - margin * 2;
-
-    let heightLeft = imgHeight;
-    let position = margin;
-
-    pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-    heightLeft -= usablePageHeight;
-
-    while (heightLeft > 0) {
-      position = margin - (imgHeight - heightLeft);
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-      heightLeft -= usablePageHeight;
-    }
+    pdf.addImage(imgData, "PNG", xPosition, yPosition, imgWidth, imgHeight);
 
     pdf.save(`wellness-${selectedDate}.pdf`);
   };
