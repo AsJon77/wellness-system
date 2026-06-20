@@ -3,6 +3,8 @@ import { Card, Row, Col, DatePicker, InputNumber, Modal, Button } from "antd";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const { RangePicker } = DatePicker;
 const Dashboard: React.FC = () => {
@@ -47,7 +49,93 @@ const Dashboard: React.FC = () => {
       (recordDate.isAfter(start) && recordDate.isBefore(end))
     );
   });
+  const handleMonthlyPdf = () => {
+    const doc = new jsPDF();
 
+    const startDate = dateRange?.[0]?.format("YYYY-MM-DD") || "-";
+    const endDate = dateRange?.[1]?.format("YYYY-MM-DD") || "-";
+
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("ZELAND WELLNESS MONTHLY REPORT", 14, 20);
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Branch: Sri Hartamas", 14, 28);
+
+    doc.setFontSize(11);
+    doc.text(`Period: ${startDate} - ${endDate}`, 14, 38);
+
+    let y = 45;
+
+    // Right side Company Summary
+
+    const summaryX = 125;
+
+    doc.setFontSize(12);
+
+    doc.text("COMPANY SUMMARY", summaryX, 45);
+
+    doc.setFontSize(10);
+
+    doc.setTextColor(40, 180, 70);
+    doc.text(`Cash: RM ${paymentSummary.cash.toFixed(2)}`, summaryX, 57);
+
+    doc.setTextColor(22, 101, 52);
+
+    doc.text(`Card: RM ${paymentSummary.card.toFixed(2)}`, summaryX, 65);
+
+    doc.setTextColor(30, 90, 255);
+    doc.text(`TNG: RM ${paymentSummary.tng.toFixed(2)}`, summaryX, 73);
+
+    // line
+    doc.setDrawColor(180);
+    doc.line(summaryX, 78, 195, 78);
+
+    doc.setTextColor(0, 0, 0);
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+
+    doc.text(
+      `Total: RM ${(
+        paymentSummary.cash +
+        paymentSummary.card +
+        paymentSummary.tng
+      ).toFixed(2)}`,
+      summaryX,
+      85,
+    );
+    doc.setFont("helvetica", "normal");
+
+    doc.text(`RM TOTAL: RM ${monthlyRM.toFixed(2)}`, 14, 65);
+
+    y += 8;
+
+    doc.text(`COUPON TOTAL: RM ${monthlyCoupon.toFixed(2)}`, 14, 75);
+
+    y += 15;
+
+    autoTable(doc, {
+      startY: 100,
+
+      head: [["Therapist", "Revenue", "RM TOTAL", "Salary:RM50%"]],
+
+      body: sortedTherapists.map(([name, values]) => [
+        name,
+
+        `RM ${(values.total || 0).toFixed(2)}`,
+        `RM ${(values.rm || 0).toFixed(2)}`,
+        `RM ${(
+          values.rm * (commission / 100) +
+          values.oil +
+          values.free
+        ).toFixed(2)}`,
+      ]),
+    });
+
+    doc.save(`Monthly_Report_${dayjs().format("YYYY-MM-DD")}.pdf`);
+  };
   // ✅ Monthly Total (RM )
   const monthlyRM = filteredRecords.reduce((sum, record) => {
     const therapists = record.data?.therapists || [];
@@ -58,7 +146,9 @@ const Dashboard: React.FC = () => {
         (tSum: number, t: any) =>
           tSum +
           t.entries.reduce((s: number, e: any) => {
-            const payment = String(e.payment || "").trim().toLowerCase();
+            const payment = String(e.payment || "")
+              .trim()
+              .toLowerCase();
             if (payment === "free") return s;
             return s + (Number(e.rm) || 0);
           }, 0),
@@ -77,7 +167,9 @@ const Dashboard: React.FC = () => {
         (tSum: number, t: any) =>
           tSum +
           t.entries.reduce((s: number, e: any) => {
-            const payment = String(e.payment || "").trim().toLowerCase();
+            const payment = String(e.payment || "")
+              .trim()
+              .toLowerCase();
             if (payment === "free") return s;
             return s + (Number(e.coupon) || 0);
           }, 0),
@@ -130,7 +222,9 @@ const Dashboard: React.FC = () => {
         }
 
         t.entries.forEach((e: any) => {
-          const payment = String(e.payment || "").trim().toLowerCase();
+          const payment = String(e.payment || "")
+            .trim()
+            .toLowerCase();
           const rm = Number(e.rm) || 0;
           const oil = Number(e.oil) || 0;
           const total = Number(e.total) || 0;
@@ -191,7 +285,11 @@ const Dashboard: React.FC = () => {
         const statuses = Array.from(
           new Set(
             therapist.entries
-              .map((e: any) => String(e.packageName || "").trim().toUpperCase())
+              .map((e: any) =>
+                String(e.packageName || "")
+                  .trim()
+                  .toUpperCase(),
+              )
               .filter((packageName: string) =>
                 ["OFF", "MC"].includes(packageName),
               ),
@@ -358,6 +456,9 @@ const Dashboard: React.FC = () => {
           </Button>
 
           <Button onClick={() => setDateRange(null)}>Reset</Button>
+          <Button type="primary" onClick={handleMonthlyPdf}>
+            Export Monthly PDF
+          </Button>
 
           <div>💰 Commission %</div>
           <InputNumber
