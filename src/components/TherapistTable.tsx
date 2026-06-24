@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  AutoComplete,
   Card,
   Input,
   InputNumber,
@@ -24,7 +23,8 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import {
   getMassagePackageDuration,
-  massagePackageOptions,
+  MassagePackageChoice,
+  massagePackageSelectionGroups,
 } from "../data/massagePackages";
 
 dayjs.extend(utc);
@@ -164,19 +164,15 @@ const TherapistTable: React.FC = () => {
 
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    () => {
-      const dateFromUrl = new URLSearchParams(window.location.search).get(
-        "date",
-      );
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const dateFromUrl = new URLSearchParams(window.location.search).get("date");
 
-      return dateFromUrl &&
-        /^\d{4}-\d{2}-\d{2}$/.test(dateFromUrl) &&
-        dayjs(dateFromUrl).isValid()
-        ? dateFromUrl
-        : dayjs().format("YYYY-MM-DD");
-    },
-  );
+    return dateFromUrl &&
+      /^\d{4}-\d{2}-\d{2}$/.test(dateFromUrl) &&
+      dayjs(dateFromUrl).isValid()
+      ? dateFromUrl
+      : dayjs().format("YYYY-MM-DD");
+  });
 
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error" | "retrying"
@@ -186,6 +182,11 @@ const TherapistTable: React.FC = () => {
   const [therapists, setTherapists] = useState<TherapistBox[]>(
     createInitialTherapists(),
   );
+  const [packageModal, setPackageModal] = useState<{
+    therapistId: number;
+    entryIndex: number;
+  } | null>(null);
+  const [customPackageName, setCustomPackageName] = useState("");
   // ✅ FIX: always mirror latest therapists in a ref so updateEntry never uses stale state
   const therapistsRef = useRef<TherapistBox[]>(therapists);
   useEffect(() => {
@@ -534,6 +535,7 @@ const TherapistTable: React.FC = () => {
     entryIndex: number,
     field: keyof Entry,
     value: string | number,
+    packageDefaults?: { rm: number; coupon: number },
   ) => {
     if (!isAdmin) return;
 
@@ -572,6 +574,11 @@ const TherapistTable: React.FC = () => {
           if (["OFF", "MC"].includes(updatedEntry.packageName)) {
             updatedEntry.timeIn = "";
             updatedEntry.timeOut = "";
+          }
+
+          if (packageDefaults) {
+            updatedEntry.rm = packageDefaults.rm;
+            updatedEntry.coupon = packageDefaults.coupon;
           }
 
           const durationMinutes = getMassagePackageDuration(
@@ -620,6 +627,62 @@ const TherapistTable: React.FC = () => {
         };
       });
     });
+  };
+
+  const openPackageModal = (therapistId: number, entryIndex: number) => {
+    if (!isAdmin) return;
+
+    const entry = therapistsRef.current.find(
+      (therapist) => therapist.id === therapistId,
+    )?.entries[entryIndex];
+
+    setCustomPackageName(entry?.packageName || "");
+    setPackageModal({ therapistId, entryIndex });
+  };
+
+  const closePackageModal = () => {
+    setPackageModal(null);
+    setCustomPackageName("");
+  };
+
+  const applyPackageChoice = (choice: MassagePackageChoice) => {
+    if (!packageModal) return;
+
+    updateEntry(
+      packageModal.therapistId,
+      packageModal.entryIndex,
+      "packageName",
+      choice.code,
+      { rm: choice.rm, coupon: choice.coupon },
+    );
+    closePackageModal();
+  };
+
+  const applyCustomPackage = () => {
+    if (!packageModal) return;
+
+    updateEntry(
+      packageModal.therapistId,
+      packageModal.entryIndex,
+      "packageName",
+      customPackageName.trim(),
+    );
+    closePackageModal();
+  };
+
+  const deleteEntry = (therapistId: number, entryIndex: number) => {
+    setTherapists((prev) =>
+      prev.map((therapist) =>
+        therapist.id === therapistId
+          ? {
+              ...therapist,
+              entries: therapist.entries.filter(
+                (_, index) => index !== entryIndex,
+              ),
+            }
+          : therapist,
+      ),
+    );
   };
 
   const clearAllData = async () => {
@@ -1113,7 +1176,20 @@ const TherapistTable: React.FC = () => {
 
                           <tbody>
                             {therapist.entries.map((entry, index) => (
-                              <tr key={`${therapist.id}-${index}`}>
+                              <tr
+                                key={`${therapist.id}-${index}`}
+                                onDoubleClick={() => {
+                                  if (!isAdmin) return;
+
+                                  const confirmed = window.confirm(
+                                    "Delete this booking row?",
+                                  );
+
+                                  if (confirmed) {
+                                    deleteEntry(therapist.id, index);
+                                  }
+                                }}
+                              >
                                 <td style={{ ...tdStyle, minWidth: "95px" }}>
                                   <TimePicker
                                     disabled={!isAdmin}
@@ -1183,35 +1259,37 @@ const TherapistTable: React.FC = () => {
                                 </td>
 
                                 <td style={tdStyle}>
-                                  <AutoComplete
+                                  <Button
                                     disabled={!isAdmin}
-                                    value={entry.packageName}
-                                    onChange={(value) =>
-                                      updateEntry(
-                                        therapist.id,
-                                        index,
-                                        "packageName",
-                                        value,
-                                      )
-                                    }
                                     size="small"
-                                    placeholder="Select"
-                                    allowClear
-                                    options={massagePackageOptions}
-                                    popupMatchSelectWidth={false}
-                                    filterOption={(inputValue, option) =>
-                                      String(option?.label ?? "")
-                                        .toUpperCase()
-                                        .includes(inputValue.toUpperCase()) ||
-                                      String(option?.value ?? "")
-                                        .toUpperCase()
-                                        .includes(inputValue.toUpperCase())
+                                    type="default"
+                                    onClick={() =>
+                                      openPackageModal(therapist.id, index)
                                     }
                                     style={{
                                       width: "100%",
+                                      height: 24,
+                                      padding: "0 4px",
+                                      textAlign: "center",
+
+                                      color:
+                                        entry.packageName === "OFF" ||
+                                        entry.packageName === "MC"
+                                          ? "#ff4d4f"
+                                          : entry.packageName
+                                          ? "#111827"
+                                          : "#9ca3af",
+
+                                      fontWeight:
+                                        entry.packageName === "OFF" ||
+                                        entry.packageName === "MC"
+                                          ? 700
+                                          : 500,
                                     }}
                                     className="package-select"
-                                  />
+                                  >
+                                    {entry.packageName || "Select"}
+                                  </Button>
                                 </td>
 
                                 <td style={tdStyle}>
@@ -1506,6 +1584,116 @@ const TherapistTable: React.FC = () => {
           </Col>
         </Row>
       </div>
+
+      <Modal
+        title="Select Package"
+        open={!!packageModal}
+        onCancel={closePackageModal}
+        footer={null}
+        width={560}
+        centered
+        className="package-modal"
+      >
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <Input
+            value={customPackageName}
+            onChange={(event) => setCustomPackageName(event.target.value)}
+            onPressEnter={applyCustomPackage}
+            placeholder="Type custom package"
+            style={{ textTransform: "uppercase" }}
+          />
+          <Button
+            onClick={applyCustomPackage}
+            disabled={!customPackageName.trim()}
+          >
+            Apply
+          </Button>
+        </div>
+
+        {massagePackageSelectionGroups.map((group) => (
+          <div
+            key={group.title}
+            style={{
+              background: group.background,
+              padding: "12px 16px",
+              border: "1px solid #e5e7eb",
+              borderBottom: 0,
+            }}
+          >
+            <div
+              style={{
+                textAlign: "center",
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              {group.title}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${group.columns.length}, minmax(0, 1fr))`,
+                gap: 8,
+              }}
+            >
+              {group.columns.map((column, columnIndex) => (
+                <div
+                  key={`${group.title}-${columnIndex}`}
+                  style={{ display: "grid", gap: 6, alignContent: "start" }}
+                >
+                  {column.map((choice) => (
+                    <Button
+                      key={`${group.title}-${choice.code}-${choice.rm}-${choice.coupon}`}
+                      type="text"
+                      onClick={() => applyPackageChoice(choice)}
+                      title={`${choice.label} | RM ${choice.rm} + Coupon ${choice.coupon}`}
+                      style={{
+                        height: 28,
+                        padding: "0 6px",
+                        textAlign: "left",
+                        justifyContent: "flex-start",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {choice.code}
+                    </Button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            border: "1px solid #e5e7eb",
+            padding: "10px 16px",
+          }}
+        >
+          {[
+            { code: "OFF", label: "Therapist off day" },
+            { code: "MC", label: "Medical leave" },
+          ].map((choice) => (
+            <Button
+              key={choice.code}
+              danger={choice.code === "OFF"}
+              onClick={() =>
+                applyPackageChoice({
+                  code: choice.code,
+                  label: choice.label,
+                  rm: 0,
+                  coupon: 0,
+                })
+              }
+            >
+              {choice.code}
+            </Button>
+          ))}
+        </div>
+      </Modal>
     </div>
   );
 };

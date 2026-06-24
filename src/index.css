@@ -67,6 +67,17 @@
   text-align: center;
 }
 
+.package-select.ant-btn {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 12px !important;
+}
+
+.package-select.ant-btn:disabled {
+  color: #b8b8b8 !important;
+}
+
 .package-select .ant-select-selector {
   border: none !important;
   background: transparent !important;
@@ -284,6 +295,15 @@ body {
 .pdf-export .summary-print-box {
   margin-top: 5px !important;
   padding: 6px !important;
+}
+
+.package-modal .ant-modal-body {
+  padding-top: 12px;
+}
+
+.package-modal .ant-btn {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ✅ MOBILE RESPONSIVE */
