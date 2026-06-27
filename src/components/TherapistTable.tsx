@@ -671,6 +671,7 @@ const TherapistTable: React.FC = () => {
   };
 
   const deleteEntry = (therapistId: number, entryIndex: number) => {
+    markLocalChange();
     setTherapists((prev) =>
       prev.map((therapist) =>
         therapist.id === therapistId
