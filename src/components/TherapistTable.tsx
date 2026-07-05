@@ -91,6 +91,37 @@ const createInitialTherapists = (): TherapistBox[] => {
   }));
 };
 
+// Detect BK packages
+const isBKPackage = (packageName: string) => {
+  return packageName.trim().toUpperCase().startsWith("BK");
+};
+
+const renderPackageName = (packageName?: string) => {
+  if (!packageName) return "Select";
+
+  if (!packageName.includes("*")) {
+    return packageName;
+  }
+
+  const normalText = packageName.replace(/\*/g, "");
+
+  return (
+    <>
+      <span>{normalText}</span>
+
+      <span
+        style={{
+          color: "#faad14",
+          fontWeight: 800,
+          textShadow: "0 0 3px rgba(255,215,0,0.6)",
+          letterSpacing: "1px",
+        }}
+      >
+        **
+      </span>
+    </>
+  );
+};
 const getHeaderColor = (title: string) => {
   const upper = title.toUpperCase().trim();
 
@@ -1259,7 +1290,16 @@ const TherapistTable: React.FC = () => {
                                   />
                                 </td>
 
-                                <td style={tdStyle}>
+                                <td
+                                  style={{
+                                    ...tdStyle,
+                                    backgroundColor: isBKPackage(
+                                      entry.packageName || "",
+                                    )
+                                      ? "#fff59d"
+                                      : undefined,
+                                  }}
+                                >
                                   <Button
                                     disabled={!isAdmin}
                                     size="small"
@@ -1289,7 +1329,7 @@ const TherapistTable: React.FC = () => {
                                     }}
                                     className="package-select"
                                   >
-                                    {entry.packageName || "Select"}
+                                    {renderPackageName(entry.packageName)}
                                   </Button>
                                 </td>
 
