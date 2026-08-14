@@ -6,6 +6,10 @@ import { supabase } from "./supabase";
 import TherapistTable from "./components/TherapistTable";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Home from "./pages/Home";
+import MemberPage from "./pages/MemberPage";
+import History from "./pages/History";
+import Orders from "./pages/Orders";
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -42,10 +46,31 @@ function App() {
       {/* LOGIN */}
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
 
-      {/* MAIN */}
+      {/* HOME */}
+      <Route path="/" element={user ? <Home /> : <Navigate to="/login" />} />
+
+      {/* DAILY SYSTEM (therapist table) */}
       <Route
-        path="/"
+        path="/daily"
         element={user ? <TherapistTable /> : <Navigate to="/login" />}
+      />
+
+      {/* MEMBER */}
+      <Route
+        path="/members"
+        element={user ? <MemberPage /> : <Navigate to="/login" />}
+      />
+
+      {/* HISTORY */}
+      <Route
+        path="/history"
+        element={user ? <History /> : <Navigate to="/login" />}
+      />
+
+      {/* ORDERS */}
+      <Route
+        path="/orders"
+        element={user ? <Orders /> : <Navigate to="/login" />}
       />
 
       {/* DASHBOARD */}

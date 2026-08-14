@@ -13,7 +13,9 @@ import {
   Spin,
   Skeleton,
   Modal,
+  Popover,
 } from "antd";
+import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { supabase } from "../supabase";
@@ -26,6 +28,13 @@ import {
   MassagePackageChoice,
   massagePackageSelectionGroups,
 } from "../data/massagePackages";
+import { Customer } from "../data/customers";
+import {
+  fetchCustomers,
+  updateCustomerSessionsUsed,
+  updateCustomerCredit,
+  logMemberVisit,
+} from "../data/customersApi";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -33,6 +42,8 @@ dayjs.extend(timezone);
 type Entry = {
   timeIn: string;
   timeOut: string;
+  customerName: string;
+  remainingSessions?: number;
   packageName: string;
   rm: number | string;
   coupon: number | string;
@@ -49,7 +60,7 @@ type TherapistBox = {
   entries: Entry[];
 };
 
-const paymentOptions = ["CASH", "CARD", "TNG", "FREE"];
+const paymentOptions = ["CASH", "CARD", "TNG", "FREE", "MEMBER"];
 
 const TIME_FORMAT = "HH:mm";
 
@@ -73,6 +84,7 @@ const addMinutesToTime = (time: string, durationMinutes: number) => {
 const createEmptyEntry = (): Entry => ({
   timeIn: "",
   timeOut: "",
+  customerName: "",
   packageName: "",
   rm: "",
   coupon: "",
@@ -84,11 +96,7 @@ const createEmptyEntry = (): Entry => ({
 });
 
 const createInitialTherapists = (): TherapistBox[] => {
-  return Array.from({ length: 8 }, (_, index) => ({
-    id: index + 1,
-    title: "",
-    entries: Array.from({ length: 0 }, () => createEmptyEntry()),
-  }));
+  return [];
 };
 
 // Detect BK packages
@@ -217,12 +225,23 @@ const TherapistTable: React.FC = () => {
     therapistId: number;
     entryIndex: number;
   } | null>(null);
+
   const [customPackageName, setCustomPackageName] = useState("");
   // ✅ FIX: always mirror latest therapists in a ref so updateEntry never uses stale state
   const therapistsRef = useRef<TherapistBox[]>(therapists);
   useEffect(() => {
     therapistsRef.current = therapists;
   }, [therapists]);
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const customersRef = useRef<Customer[]>([]);
+  useEffect(() => {
+    customersRef.current = customers;
+  }, [customers]);
+
+  useEffect(() => {
+    fetchCustomers().then(setCustomers);
+  }, []);
 
   const [serverVersion, setServerVersion] = useState<string | null>(null);
   const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null);
@@ -250,6 +269,29 @@ const TherapistTable: React.FC = () => {
         };
       }),
     );
+  };
+
+  const [addTherapistOpen, setAddTherapistOpen] = useState(false);
+  const [newTherapistName, setNewTherapistName] = useState("");
+
+  const addTherapist = () => {
+    const title = newTherapistName.trim().toUpperCase();
+    if (!title) return;
+
+    if (therapists.some((t) => t.title.trim().toUpperCase() === title)) {
+      alert(`${title} is already on today's sheet.`);
+      return;
+    }
+
+    markLocalChange();
+
+    setTherapists((prev) => {
+      const nextId = prev.length ? Math.max(...prev.map((t) => t.id)) + 1 : 1;
+      return [...prev, { id: nextId, title, entries: [] }];
+    });
+
+    setNewTherapistName("");
+    setAddTherapistOpen(false);
   };
 
   const [summary, setSummary] = useState({
@@ -660,6 +702,140 @@ const TherapistTable: React.FC = () => {
     });
   };
 
+  // Mutates the local customers state + ref, and persists the new
+  // sessionsUsed value to Supabase (replaces the old localStorage write).
+  const applyCustomerSessionsUsed = (
+    customerId: number,
+    sessionsUsed: number,
+  ) => {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === customerId ? { ...c, sessionsUsed } : c)),
+    );
+    customersRef.current = customersRef.current.map((c) =>
+      c.id === customerId ? { ...c, sessionsUsed } : c,
+    );
+    updateCustomerSessionsUsed(customerId, sessionsUsed);
+  };
+
+  // Same pattern, but for the member's credit balance.
+  const applyCustomerCredit = (customerId: number, credit: number) => {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === customerId ? { ...c, credit } : c)),
+    );
+    customersRef.current = customersRef.current.map((c) =>
+      c.id === customerId ? { ...c, credit } : c,
+    );
+    updateCustomerCredit(customerId, credit);
+  };
+
+  const handlePaymentChange = (
+    therapistId: number,
+    index: number,
+    payment: string,
+  ) => {
+    const therapist = therapistsRef.current.find((t) => t.id === therapistId);
+
+    if (!therapist) return;
+
+    const entry = therapist.entries[index];
+
+    // Save old payment BEFORE changing it
+    const oldPayment = entry.payment;
+
+    // Update the row payment first
+    updateEntry(therapistId, index, "payment", payment);
+
+    // No customer selected
+    if (!entry.customerName) return;
+
+    const customer = customersRef.current.find(
+      (c) => c.name === entry.customerName,
+    );
+
+    if (!customer) return;
+
+    // Not a member customer
+    if (!customer.member) return;
+
+    // The package price for this row — same amount that was deducted from
+    // credit when payment was originally set to MEMBER (RM + Coupon + Oil).
+    const rowAmount =
+      (Number(entry.rm) || 0) +
+      (Number(entry.coupon) || 0) +
+      (Number(entry.oil) || 0);
+
+    //----------------------------------------
+    // MEMBER -> CASH/CARD/TNG/FREE
+    //----------------------------------------
+    if (oldPayment === "MEMBER" && payment !== "MEMBER") {
+      const nextUsed = Math.max((customer.sessionsUsed ?? 0) - 1, 0);
+      applyCustomerSessionsUsed(customer.id, nextUsed);
+      refreshCustomerRemainingSessions(customer.name);
+
+      if (rowAmount > 0) {
+        applyCustomerCredit(customer.id, (customer.credit || 0) + rowAmount);
+        logMemberVisit({
+          customerId: customer.id,
+          type: "refund",
+          therapistName: therapist.title,
+          description: `Payment changed to ${payment} — ${rowAmount} refunded`,
+          amount: rowAmount,
+        });
+      }
+
+      return;
+    }
+
+    //----------------------------------------
+    // CASH/CARD/TNG/FREE -> MEMBER
+    //----------------------------------------
+    if (oldPayment !== "MEMBER" && payment === "MEMBER") {
+      const nextUsed = Math.min(
+        (customer.sessionsUsed ?? 0) + 1,
+        customer.sessionsTotal ?? 0,
+      );
+      applyCustomerSessionsUsed(customer.id, nextUsed);
+      refreshCustomerRemainingSessions(customer.name);
+
+      if (rowAmount > 0) {
+        applyCustomerCredit(customer.id, (customer.credit || 0) - rowAmount);
+        logMemberVisit({
+          customerId: customer.id,
+          type: "visit",
+          therapistName: therapist.title,
+          description: `${entry.packageName || "Session"} with ${
+            therapist.title
+          }`,
+          amount: rowAmount,
+        });
+      }
+
+      return;
+    }
+
+    //----------------------------------------
+    // MEMBER -> MEMBER
+    //----------------------------------------
+    if (oldPayment === "MEMBER" && payment === "MEMBER") {
+      return;
+    }
+  };
+
+  const refreshCustomerRemainingSessions = (customerName: string) => {
+    const customer = customersRef.current.find((c) => c.name === customerName);
+    if (!customer) return;
+    const remaining =
+      (customer.sessionsTotal ?? 0) - (customer.sessionsUsed ?? 0);
+
+    therapistsRef.current.forEach((therapist) => {
+      therapist.entries.forEach((entry, index) => {
+        if (entry.customerName === customerName) {
+          updateEntry(therapist.id, index, "remainingSessions", remaining);
+        }
+      });
+    });
+  };
+
   const openPackageModal = (therapistId: number, entryIndex: number) => {
     if (!isAdmin) return;
 
@@ -916,7 +1092,7 @@ const TherapistTable: React.FC = () => {
             level={2}
             style={{ margin: 0, fontSize: "22px", whiteSpace: "nowrap" }}
           >
-            🧘ZENLAND WELLNESS DAILY SYSTEM
+            🧘ZENLAND WELLNESS
           </Typography.Title>
         </div>
 
@@ -962,19 +1138,6 @@ const TherapistTable: React.FC = () => {
           </span>
 
           <Button
-            danger
-            onClick={handleLogout}
-            style={{
-              borderRadius: 8,
-              height: 36,
-              paddingInline: 18,
-              fontWeight: 600,
-            }}
-          >
-            Logout
-          </Button>
-
-          <Button
             style={{
               borderRadius: 8,
               height: 36,
@@ -1000,6 +1163,33 @@ const TherapistTable: React.FC = () => {
             disabled={!isAdmin}
           >
             Clear All
+          </Button>
+
+          <Button
+            style={{
+              borderRadius: 8,
+              height: 36,
+              paddingInline: 18,
+              fontWeight: 600,
+            }}
+            onClick={() => setAddTherapistOpen(true)}
+            type="default"
+            disabled={!isAdmin}
+          >
+            +Add Table
+          </Button>
+
+          <Button
+            style={{
+              borderRadius: 8,
+              height: 36,
+              paddingInline: 18,
+              fontWeight: 600,
+            }}
+            onClick={() => navigate("/")}
+            type="default"
+          >
+            🏠 Home
           </Button>
 
           <Button
@@ -1129,10 +1319,10 @@ const TherapistTable: React.FC = () => {
                     className="therapist-card"
                     bodyStyle={{ padding: 0 }}
                     style={{
-                      border: "1px solid #999",
+                      border: "1px solid #E4E9E5",
                       width: "100%",
                       margin: "0 auto",
-                      borderRadius: 4,
+                      borderRadius: 10,
                       overflow: "hidden",
                       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                     }}
@@ -1310,6 +1500,7 @@ const TherapistTable: React.FC = () => {
                                     style={{
                                       width: "100%",
                                       height: 24,
+                                      marginTop: 1,
                                       padding: "0 4px",
                                       textAlign: "center",
 
@@ -1438,20 +1629,24 @@ const TherapistTable: React.FC = () => {
                                             : entry.payment?.toUpperCase() ===
                                               "FREE"
                                             ? "#f97316"
+                                            : entry.payment?.toUpperCase() ===
+                                              "MEMBER"
+                                            ? "linear-gradient(135deg, #e0b155, #c68a3e)"
                                             : "#d1d5db",
                                       }}
                                     >
-                                      {entry.payment || "-"}
+                                      {entry.payment?.toUpperCase() === "MEMBER"
+                                        ? "MB"
+                                        : entry.payment || "-"}
                                     </div>
                                   ) : (
                                     <Select
                                       disabled={!isAdmin}
                                       value={entry.payment || undefined}
                                       onChange={(value) =>
-                                        updateEntry(
+                                        handlePaymentChange(
                                           therapist.id,
                                           index,
-                                          "payment",
                                           value ?? "",
                                         )
                                       }
@@ -1466,8 +1661,26 @@ const TherapistTable: React.FC = () => {
                                       popupMatchSelectWidth={false}
                                       dropdownStyle={{ borderRadius: "10px" }}
                                       options={paymentOptions.map((item) => ({
-                                        label: item,
+                                        label: item === "MEMBER" ? "MB" : item,
                                         value: item,
+                                        disabled:
+                                          item === "MEMBER" &&
+                                          !!entry.customerName &&
+                                          (() => {
+                                            const customer = customers.find(
+                                              (c) =>
+                                                c.name === entry.customerName,
+                                            );
+
+                                            if (!customer || !customer.member)
+                                              return false;
+
+                                            const remaining =
+                                              (customer.sessionsTotal ?? 0) -
+                                              (customer.sessionsUsed ?? 0);
+
+                                            return remaining <= 0;
+                                          })(),
                                       }))}
                                       className={`payment-select payment-${
                                         entry.payment?.toLowerCase() || "empty"
@@ -1523,28 +1736,34 @@ const TherapistTable: React.FC = () => {
         className="summary-print-box"
         style={{
           marginTop: 17,
-          border: "1px solid #999",
-          padding: "13px",
-          borderRadius: 6,
+          border: "1px solid #E4E9E5",
+          padding: "16px",
+          borderRadius: 10,
           background: "#fafafa",
         }}
       >
         <div
-          style={{ marginBottom: 16, display: "flex", alignItems: "center" }}
+          className="summary-header-row"
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
         >
           <Typography.Title
             level={5}
-            style={{ marginTop: 0, marginBottom: 16 }}
+            style={{ margin: 0, whiteSpace: "nowrap" }}
           >
             DAILY SUMMARY
           </Typography.Title>
 
           <div
+            className="summary-meta-row"
             style={{
               display: "flex",
-              gap: 50,
-              marginBottom: -15,
-              marginLeft: 120,
+              gap: 24,
               flexWrap: "wrap",
               alignItems: "center",
               color: "#555",
@@ -1735,20 +1954,40 @@ const TherapistTable: React.FC = () => {
           ))}
         </div>
       </Modal>
+
+      <Modal
+        title="Add Therapist"
+        open={addTherapistOpen}
+        onCancel={() => {
+          setAddTherapistOpen(false);
+          setNewTherapistName("");
+        }}
+        onOk={addTherapist}
+        okText="Add"
+      >
+        <Input
+          value={newTherapistName}
+          onChange={(e) => setNewTherapistName(e.target.value)}
+          onPressEnter={addTherapist}
+          placeholder="e.g. 19M or 8F"
+          autoFocus
+        />
+      </Modal>
     </div>
   );
 };
 
 const thStyle: React.CSSProperties = {
-  border: "1px solid #999",
-  padding: "6px",
+  border: "1px solid #DDE2DE",
+  padding: "7px 6px",
   textAlign: "center",
-  background: "#f5f5f5",
+  background: "#F7F8F6",
   fontWeight: "bold",
+  color: "#3A423C",
 };
 
 const paymentTopStyle: React.CSSProperties = {
-  border: "1px solid #999",
+  border: "1px solid #DDE2DE",
   padding: "0",
   textAlign: "center",
   background: "#f8d7da",
@@ -1757,46 +1996,49 @@ const paymentTopStyle: React.CSSProperties = {
 };
 
 const tdStyle: React.CSSProperties = {
-  border: "1px solid #999",
-  padding: "2px",
+  border: "1px solid #E4E9E5",
+  padding: "4px 2px",
   textAlign: "center",
   verticalAlign: "middle",
 };
 
 const totalLabelStyle: React.CSSProperties = {
-  border: "1px solid #999",
-  padding: "6px",
+  border: "1px solid #DDE2DE",
+  padding: "7px 6px",
   textAlign: "center",
   fontWeight: "bold",
-  background: "#fafafa",
+  background: "#F7F8F6",
+  color: "#3A423C",
 };
 
 const totalValueStyle: React.CSSProperties = {
-  border: "1px solid #999",
-  padding: "6px",
+  border: "1px solid #E4E9E5",
+  padding: "7px 6px",
   textAlign: "center",
-  background: "#fafafa",
+  background: "#fff",
 };
 
 const summaryBoxStyle: React.CSSProperties = {
-  border: "1px solid #999",
-  borderRadius: 4,
+  border: "1px solid #E4E9E5",
+  borderRadius: 10,
   background: "#fff",
-  padding: "6px",
+  padding: "12px 8px",
   textAlign: "center",
 };
 
 const summaryLabelStyle: React.CSSProperties = {
-  fontSize: "12px",
-  fontWeight: 600,
-  color: "#666",
-  marginBottom: "2px",
+  fontSize: "11px",
+  fontWeight: 700,
+  color: "#5C6B63",
+  marginBottom: "4px",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
 };
 
 const summaryValueStyle: React.CSSProperties = {
-  fontSize: "18px",
-  fontWeight: 600,
-  color: "#111",
+  fontSize: "19px",
+  fontWeight: 700,
+  color: "#2F4F44",
 };
 
 export default TherapistTable;

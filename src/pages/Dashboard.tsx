@@ -310,7 +310,7 @@ const Dashboard: React.FC = () => {
   }, [filteredRecords, selectedTherapist]);
 
   const openDailyRecord = (date: string) => {
-    navigate(`/?date=${date}`);
+    navigate(`/daily?date=${date}`);
   };
 
   // 📈 TODAY vs YESTERDAY
@@ -341,7 +341,7 @@ const Dashboard: React.FC = () => {
   return (
     <div style={{ padding: 20 }}>
       <Button
-        onClick={() => navigate("/")}
+        onClick={() => navigate("/daily")}
         size="small"
         style={{
           marginBottom: 10,
