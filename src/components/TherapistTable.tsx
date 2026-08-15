@@ -1346,6 +1346,16 @@ const TherapistTable: React.FC = () => {
                             fontSize: "12px",
                           }}
                         >
+                          <colgroup>
+                            <col className="col-in" />
+                            <col className="col-out" />
+                            <col className="col-package" />
+                            <col className="col-rm" />
+                            <col className="col-coupon" />
+                            <col className="col-oil" />
+                            <col className="col-total" />
+                            <col className="col-payment" />
+                          </colgroup>
                           <thead>
                             <tr>
                               <th colSpan={2} style={thStyle}>

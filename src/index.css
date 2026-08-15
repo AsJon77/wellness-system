@@ -400,83 +400,111 @@ body {
     border-radius: 12px !important;
   }
 
-  /* Rather than shrinking every cell down to near-illegible text, each
-     therapist's table scrolls horizontally at a comfortable, readable
-     size — a standard, well-understood mobile pattern for dense tables. */
+  /* Everything fits within the screen width — no horizontal scrolling.
+     Column proportions are set via the <colgroup> classes below; this
+     does NOT affect Export PDF, which uses the separate .pdf-export
+     class rules further up this file, untouched by this media query. */
   .therapist-table-wrap {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    position: relative;
+    overflow-x: hidden !important;
   }
 
   .therapist-table {
-    width: auto !important;
-    min-width: 620px !important;
-    font-size: 12.5px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 10px !important;
     table-layout: fixed !important;
+  }
+
+  .therapist-table col.col-in,
+  .therapist-table col.col-out {
+    width: 15% !important;
+  }
+  .therapist-table col.col-package {
+    width: 15% !important;
+  }
+  .therapist-table col.col-rm,
+  .therapist-table col.col-coupon,
+  .therapist-table col.col-total {
+    width: 10% !important;
+  }
+  .therapist-table col.col-oil {
+    width: 12% !important;
+  }
+  .therapist-table col.col-payment {
+    width: 13% !important;
   }
 
   .therapist-table th,
   .therapist-table td {
-    padding: 7px 5px !important;
-    line-height: 1.3 !important;
-    height: 38px !important;
+    min-width: 0 !important;
+    padding: 4px 2px !important;
+    line-height: 1.2 !important;
+    height: 32px !important;
     word-break: normal !important;
+    overflow: hidden;
+  }
+
+  .therapist-table th {
+    white-space: normal !important;
+    font-size: 9px !important;
   }
 
   .therapist-table .ant-picker {
-    width: 64px !important;
-    padding: 2px 4px !important;
-    height: 30px !important;
+    width: 100% !important;
+    padding: 1px 2px !important;
+    height: 28px !important;
   }
 
   .therapist-table .ant-picker-input > input {
-    font-size: 12px !important;
+    font-size: 9.5px !important;
     text-align: center !important;
+  }
+
+  .therapist-table .ant-picker-suffix {
+    display: none !important;
   }
 
   .therapist-table .ant-input,
   .therapist-table .ant-input-number,
   .therapist-table .ant-input-number-input,
   .therapist-table .ant-select-selector {
-    font-size: 12px !important;
+    font-size: 9.5px !important;
+    padding: 0 2px !important;
     text-align: center !important;
   }
 
   .therapist-table .ant-select-selector,
   .therapist-table .ant-picker {
-    min-height: 30px !important;
+    min-height: 26px !important;
   }
 
   .therapist-table .ant-input-number {
-    width: 48px !important;
+    width: 100% !important;
   }
 
   .therapist-table .package-select {
     width: 100% !important;
-    min-height: 34px !important;
+    min-height: 28px !important;
+    font-size: 9px !important;
+    padding-inline: 2px !important;
   }
 
   .therapist-table .payment-select {
-    width: 68px !important;
+    width: 100% !important;
+  }
+
+  .therapist-table .payment-select .ant-select-selector {
+    padding-inline: 2px !important;
   }
 
   .therapist-table .payment-select .ant-select-selection-item {
-    font-size: 11.5px !important;
-    padding-inline-end: 10px !important;
+    font-size: 9px !important;
+    padding-inline-end: 12px !important;
   }
 
-  /* A small fade hint on the right edge signals there's more to scroll */
-  .therapist-table-wrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 18px;
-    pointer-events: none;
-    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.85));
+  .therapist-table .ant-select-arrow {
+    right: 3px !important;
+    font-size: 8px !important;
   }
 
   .summary-print-box {
@@ -523,6 +551,37 @@ body {
 
   .view-only-mode .ant-select-disabled .ant-select-selection-item {
     color: #111827 !important;
+  }
+}
+
+/* Extra-narrow phones (iPhone SE, small Android devices) — shave a
+   little more off so nothing gets clipped or forces a scrollbar. */
+@media (max-width: 380px) {
+  .therapist-table {
+    font-size: 9px !important;
+  }
+
+  .therapist-table th {
+    font-size: 8px !important;
+  }
+
+  .therapist-table th,
+  .therapist-table td {
+    padding: 3px 1px !important;
+    height: 30px !important;
+  }
+
+  .therapist-table .ant-picker-input > input,
+  .therapist-table .ant-input,
+  .therapist-table .ant-input-number,
+  .therapist-table .ant-input-number-input,
+  .therapist-table .ant-select-selector {
+    font-size: 8.5px !important;
+  }
+
+  .therapist-table .package-select,
+  .therapist-table .payment-select .ant-select-selection-item {
+    font-size: 8px !important;
   }
 }
 
