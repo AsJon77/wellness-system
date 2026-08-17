@@ -1189,7 +1189,7 @@ const TherapistTable: React.FC = () => {
             onClick={() => navigate("/")}
             type="default"
           >
-            🏠 Home
+            🏠Home
           </Button>
 
           <Button

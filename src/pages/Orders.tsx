@@ -490,6 +490,7 @@ const OrderFormModal: React.FC<{
         footer={null}
         width={560}
         centered
+        zIndex={2000}
       >
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <Input
