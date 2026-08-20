@@ -140,7 +140,7 @@ export const attachOrderToTherapist = async (params: {
   packageCode: string;
   rm: number;
   coupon: number;
-  oil: number;
+  oil: string;
   payment: string;
 }): Promise<{ success: boolean; error?: string }> => {
   const { date, therapistId, customerName, packageCode, rm, coupon, oil, payment } =
@@ -212,7 +212,7 @@ export const attachMemberVisitToTherapist = async (params: {
   packageCode: string;
   rm: number;
   coupon: number;
-  oil: number;
+  oil: string;
   total: number;
 }): Promise<{ success: boolean; error?: string }> => {
   const { date, therapistTitle, customerName, packageCode, rm, coupon, oil } =

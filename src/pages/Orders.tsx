@@ -330,7 +330,7 @@ const OrderFormModal: React.FC<{
   const recomputeTotal = () => {
     const values = form.getFieldsValue();
     setComputedTotal(
-      Number(values.rm || 0) + Number(values.coupon || 0) + Number(values.oil || 0),
+      Number(values.rm || 0) + Number(values.coupon || 0) + (Number(values.oil) || 0),
     );
   };
 
@@ -358,8 +358,8 @@ const OrderFormModal: React.FC<{
 
       const rm = values.rm ?? 0;
       const coupon = values.coupon ?? 0;
-      const oil = values.oil ?? 0;
-      const total = rm + coupon + oil;
+      const oilText: string = values.oil || "";
+      const total = rm + coupon + (Number(oilText) || 0);
       const customerName = (values.customerName || "").trim();
 
       const result = await attachOrderToTherapist({
@@ -369,7 +369,7 @@ const OrderFormModal: React.FC<{
         packageCode: values.packageCode,
         rm,
         coupon,
-        oil,
+        oil: oilText,
         payment: values.payment,
       });
 
@@ -471,7 +471,7 @@ const OrderFormModal: React.FC<{
 
           <div style={{ display: "flex", gap: 12 }}>
             <Form.Item name="oil" label="OIL / HS20 / NETT" style={{ flex: 1 }}>
-              <InputNumber min={0} style={{ width: "100%" }} placeholder="0" />
+              <Input style={{ width: "100%" }} placeholder="e.g. Lav or 0" />
             </Form.Item>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, marginBottom: 8 }}>Total</div>
