@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -45,6 +45,8 @@ const genderOf = (title: string): "M" | "F" | "?" => {
   return "?";
 };
 
+const ORDER_KEY_PREFIX = "zenland-orders-manual-order-";
+
 const Orders: React.FC = () => {
   const navigate = useNavigate();
   const [therapists, setTherapists] = useState<DailyTherapistBox[]>([]);
@@ -56,6 +58,35 @@ const Orders: React.FC = () => {
   const [newTherapistName, setNewTherapistName] = useState("");
   const [addingTherapist, setAddingTherapist] = useState(false);
   const date = todayMYT();
+
+  // Manual drag-to-reorder, kept purely on this page (in the browser only)
+  // and never written back to the Daily System table.
+  const [manualOrder, setManualOrder] = useState<number[]>(() => {
+    try {
+      const raw = localStorage.getItem(ORDER_KEY_PREFIX + date);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const badgeRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const dragState = useRef<{
+    id: number | null;
+    holdTimer: ReturnType<typeof setTimeout> | null;
+    startX: number;
+    startY: number;
+    dragging: boolean;
+  }>({ id: null, holdTimer: null, startX: 0, startY: 0, dragging: false });
+
+  const saveManualOrder = (order: number[]) => {
+    setManualOrder(order);
+    try {
+      localStorage.setItem(ORDER_KEY_PREFIX + date, JSON.stringify(order));
+    } catch {
+      // ignore storage errors (e.g. private browsing)
+    }
+  };
 
   const load = () => {
     setLoading(true);
@@ -94,45 +125,159 @@ const Orders: React.FC = () => {
     load();
   };
 
-  // A therapist is "busy" if their latest booked session's time-out hasn't
-  // passed yet. Available therapists are ordered so whoever has been idle
-  // longest (or never worked today) comes first, and whoever just finished
-  // a session rotates to the back of the line.
-  const { availableList, busyList } = useMemo(() => {
+  // A therapist is "off" for the day if they've been marked OFF or MC on any
+  // entry today — they're pulled out of the rotation entirely. Otherwise
+  // they're "busy" if their latest booked session's time-out hasn't passed
+  // yet. Available therapists are ordered so whoever has been idle longest
+  // (or never worked today) comes first, and whoever just finished a
+  // session rotates to the back of the line — unless a manual order has
+  // been set by dragging, which always takes priority.
+  const { availableList, busyList, offList } = useMemo(() => {
     const nowStr = dayjs().tz(MYT).format(TIME_FORMAT);
 
     const statuses = therapists
       .filter((t) => t.title?.trim())
       .map((t) => {
+        const isOff = t.entries.some(
+          (e) => e.packageName === "OFF" || e.packageName === "MC",
+        );
         const timeOuts = t.entries.map((e) => e.timeOut).filter(Boolean) as string[];
         const latest = timeOuts.sort().slice(-1)[0] || null;
-        const busy = !!latest && latest > nowStr;
-        return { ...t, latest, busy };
+        const busy = !isOff && !!latest && latest > nowStr;
+        return { ...t, latest, busy, isOff };
       });
 
-    const availableList = statuses
-      .filter((t) => !t.busy)
+    const offList = statuses.filter((t) => t.isOff);
+
+    const rotationOrdered = statuses
+      .filter((t) => !t.isOff && !t.busy)
       .sort((a, b) => (a.latest || "").localeCompare(b.latest || ""));
+
+    // Apply the manual drag order on top of the rotation order, when set.
+    const availableList = manualOrder.length
+      ? [...rotationOrdered].sort((a, b) => {
+          const ia = manualOrder.indexOf(a.id);
+          const ib = manualOrder.indexOf(b.id);
+          return (ia === -1 ? Infinity : ia) - (ib === -1 ? Infinity : ib);
+        })
+      : rotationOrdered;
 
     const busyList = statuses
-      .filter((t) => t.busy)
+      .filter((t) => !t.isOff && t.busy)
       .sort((a, b) => (a.latest || "").localeCompare(b.latest || ""));
 
-    return { availableList, busyList };
+    return { availableList, busyList, offList };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapists, tick]);
+  }, [therapists, tick, manualOrder]);
 
   const male = availableList.filter((t) => genderOf(t.title) === "M");
   const female = availableList.filter((t) => genderOf(t.title) === "F");
   const other = availableList.filter((t) => genderOf(t.title) === "?");
 
-  const Badge: React.FC<{ t: DailyTherapistBox }> = ({ t }) => {
+  // Reorders `group` (an array of ids, in current visual order) by moving
+  // `draggedId` to sit where `overId` currently is, then folds that back
+  // into the full manual-order list so other groups are unaffected.
+  const reorderWithinGroup = (group: DailyTherapistBox[], draggedId: number, overId: number) => {
+    if (draggedId === overId) return;
+    const ids = group.map((t) => t.id);
+    const from = ids.indexOf(draggedId);
+    const to = ids.indexOf(overId);
+    if (from === -1 || to === -1) return;
+
+    const reorderedGroup = [...ids];
+    reorderedGroup.splice(from, 1);
+    reorderedGroup.splice(to, 0, draggedId);
+
+    // Merge: keep every other currently-available id's relative order,
+    // just splice this group's new order back into the full sequence.
+    const fullOrder = availableList.map((t) => t.id);
+    const groupSet = new Set(ids);
+    let cursor = 0;
+    const merged = fullOrder.map((id) => (groupSet.has(id) ? reorderedGroup[cursor++] : id));
+
+    saveManualOrder(merged);
+  };
+
+  const handlePointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    t: DailyTherapistBox,
+  ) => {
+    dragState.current.startX = e.clientX;
+    dragState.current.startY = e.clientY;
+    dragState.current.dragging = false;
+    dragState.current.id = t.id;
+
+    dragState.current.holdTimer = setTimeout(() => {
+      dragState.current.dragging = true;
+      setDraggingId(t.id);
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    }, 450);
+  };
+
+  const handlePointerMove = (
+    e: React.PointerEvent<HTMLDivElement>,
+    group: DailyTherapistBox[],
+  ) => {
+    const dx = Math.abs(e.clientX - dragState.current.startX);
+    const dy = Math.abs(e.clientY - dragState.current.startY);
+
+    // Movement before the hold-timer fires cancels the drag (treat as a
+    // scroll/tap instead of a reorder gesture).
+    if (!dragState.current.dragging) {
+      if (dx > 8 || dy > 8) {
+        if (dragState.current.holdTimer) clearTimeout(dragState.current.holdTimer);
+        dragState.current.id = null;
+      }
+      return;
+    }
+
+    const draggedId = dragState.current.id;
+    if (draggedId == null) return;
+
+    for (const t of group) {
+      if (t.id === draggedId) continue;
+      const el = badgeRefs.current[t.id];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      ) {
+        reorderWithinGroup(group, draggedId, t.id);
+        break;
+      }
+    }
+  };
+
+  const handlePointerUp = () => {
+    if (dragState.current.holdTimer) clearTimeout(dragState.current.holdTimer);
+    dragState.current.dragging = false;
+    dragState.current.id = null;
+    setDraggingId(null);
+  };
+
+  const Badge: React.FC<{ t: DailyTherapistBox; group: DailyTherapistBox[] }> = ({ t, group }) => {
     const g = genderOf(t.title);
     const bg = g === "M" ? MALE_BG : g === "F" ? FEMALE_BG : NEUTRAL_BG;
     const color = g === "M" ? MALE_TEXT : g === "F" ? FEMALE_TEXT : NEUTRAL_TEXT;
+    const isDragging = draggingId === t.id;
+
     return (
       <div
-        onClick={() => setSelected(t)}
+        ref={(el) => {
+          badgeRefs.current[t.id] = el;
+        }}
+        onPointerDown={(e) => handlePointerDown(e, t)}
+        onPointerMove={(e) => handlePointerMove(e, group)}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onClick={() => {
+          // A completed drag shouldn't also trigger opening the order form.
+          if (dragState.current.dragging) return;
+          setSelected(t);
+        }}
         style={{
           width: 56,
           height: 56,
@@ -146,7 +291,16 @@ const Orders: React.FC = () => {
           fontSize: 13,
           fontWeight: 700,
           cursor: "pointer",
+          touchAction: "none",
+          userSelect: "none",
+          transform: isDragging ? "scale(1.12)" : "scale(1)",
+          boxShadow: isDragging ? "0 6px 16px rgba(0,0,0,0.25)" : "none",
+          opacity: isDragging ? 0.9 : 1,
+          zIndex: isDragging ? 5 : 1,
+          position: "relative",
+          transition: isDragging ? "none" : "transform 0.15s ease",
         }}
+        title="Tap to add an order · Press and hold to reorder"
       >
         {t.title}
       </div>
@@ -189,8 +343,11 @@ const Orders: React.FC = () => {
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             {/* LEFT: AVAILABLE */}
             <div style={{ flex: "1 1 320px", minWidth: 280 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5C6B63", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#5C6B63", marginBottom: 4 }}>
                 Available
+              </div>
+              <div style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 12 }}>
+                Tap to add an order · Press and hold to reorder the turn
               </div>
               <div style={{ background: "#fff", border: `1px solid ${LINE}`, borderRadius: 14, padding: 18 }}>
                 {availableList.length === 0 ? (
@@ -201,37 +358,59 @@ const Orders: React.FC = () => {
                   <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: male.length && female.length ? 18 : 0 }}>
                       {male.map((t) => (
-                        <Badge key={t.id} t={t} />
+                        <Badge key={t.id} t={t} group={male} />
                       ))}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
                       {female.map((t) => (
-                        <Badge key={t.id} t={t} />
+                        <Badge key={t.id} t={t} group={female} />
                       ))}
                     </div>
                     {other.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginTop: 18 }}>
                         {other.map((t) => (
-                          <Badge key={t.id} t={t} />
+                          <Badge key={t.id} t={t} group={other} />
                         ))}
                       </div>
                     )}
                   </>
                 )}
 
-                <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 18, paddingTop: 18 }}>
+                <div style={{ borderTop: `1px solid ${LINE}`, marginTop: 18, paddingTop: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                   <div
                     onClick={() => setAddTherapistOpen(true)}
                     style={{
                       width: 56, height: 56, borderRadius: "50%",
                       border: `2px dashed #C4C9C6`, color: "#9CA3AF",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 18, cursor: "pointer",
+                      fontSize: 18, cursor: "pointer", flexShrink: 0,
                     }}
                     title="Add Therapist"
                   >
                     <PlusOutlined />
                   </div>
+
+                  {offList.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {offList.map((t) => (
+                        <div
+                          key={t.id}
+                          title={t.entries.find((e) => e.packageName === "OFF" || e.packageName === "MC")?.packageName}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            background: "#F3F4F6", color: "#6B7280",
+                            border: "1px solid #E4E9E5", borderRadius: 20,
+                            padding: "6px 12px", fontSize: 12, fontWeight: 600,
+                          }}
+                        >
+                          {t.title}
+                          <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.7 }}>
+                            {t.entries.find((e) => e.packageName === "OFF" || e.packageName === "MC")?.packageName}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -542,7 +721,30 @@ const OrderFormModal: React.FC<{
             </div>
           </div>
         ))}
-        <div style={{ border: "1px solid #e5e7eb", padding: "10px 16px" }} />
+        <div style={{ display: "flex", gap: 8, border: "1px solid #e5e7eb", padding: "10px 16px" }}>
+          {[
+            { code: "OFF", label: "Therapist off day" },
+            { code: "MC", label: "Medical leave" },
+          ].map((choice) => (
+            <button
+              key={choice.code}
+              onClick={() => applyPackageChoice({ code: choice.code, rm: 0, coupon: 0 })}
+              title={choice.label}
+              style={{
+                height: 32,
+                padding: "0 14px",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontWeight: 600,
+                border: choice.code === "OFF" ? "1px solid #C0533E" : "1px solid #d9d9d9",
+                color: choice.code === "OFF" ? "#C0533E" : "#000",
+                background: "#fff",
+              }}
+            >
+              {choice.code}
+            </button>
+          ))}
+        </div>
       </Modal>
     </>
   );
