@@ -529,17 +529,46 @@ const OrderFormModal: React.FC<{
 
   const customerOptions = customers.map((c) => ({ value: c.name }));
 
+  // Reactively re-evaluated on every render (which happens on every field
+  // change via recomputeTotal), so this always reflects the current form.
+  const currentValues = form.getFieldsValue();
+  const currentCustomerName = (currentValues.customerName || "").trim();
+  const currentMatchedMember = customers.find(
+    (c) => c.member && c.name.toLowerCase() === currentCustomerName.toLowerCase(),
+  );
+  const insufficientMember =
+    currentMatchedMember &&
+    currentValues.payment === "MEMBER" &&
+    computedTotal > (currentMatchedMember.credit || 0)
+      ? currentMatchedMember
+      : null;
+
   const handleSubmit = () => {
     if (!therapist) return;
 
     form.validateFields().then(async (values) => {
-      setSaving(true);
-
       const rm = values.rm ?? 0;
       const coupon = values.coupon ?? 0;
       const oilText: string = values.oil || "";
       const total = rm + coupon + (Number(oilText) || 0);
       const customerName = (values.customerName || "").trim();
+
+      const matchedMember = customers.find(
+        (c) => c.member && c.name.toLowerCase() === customerName.toLowerCase(),
+      );
+
+      if (
+        matchedMember &&
+        values.payment === "MEMBER" &&
+        total > (matchedMember.credit || 0)
+      ) {
+        message.error(
+          `Insufficient balance — ${matchedMember.name} has RM ${(matchedMember.credit || 0).toFixed(2)}, this order needs RM ${total.toFixed(2)}`,
+        );
+        return;
+      }
+
+      setSaving(true);
 
       const result = await attachOrderToTherapist({
         date,
@@ -560,10 +589,6 @@ const OrderFormModal: React.FC<{
 
       // If this matches a real member and payment is MB, mirror the same
       // credit/session deduction the Member page's Form does.
-      const matchedMember = customers.find(
-        (c) => c.member && c.name.toLowerCase() === customerName.toLowerCase(),
-      );
-
       if (matchedMember && values.payment === "MEMBER") {
         if ((matchedMember.sessionsTotal ?? 0) > 0) {
           const nextUsed = Math.min(
@@ -603,6 +628,7 @@ const OrderFormModal: React.FC<{
         onCancel={onClose}
         onOk={handleSubmit}
         okText="Submit"
+        okButtonProps={{ disabled: !!insufficientMember }}
         confirmLoading={saving}
         destroyOnClose
       >
@@ -654,11 +680,38 @@ const OrderFormModal: React.FC<{
             </Form.Item>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, marginBottom: 8 }}>Total</div>
-              <div style={{ background: PRIMARY_SOFT, color: PRIMARY, fontWeight: 700, fontSize: 14, borderRadius: 8, padding: "6.5px 11px" }}>
+              <div
+                style={{
+                  background: insufficientMember ? "#FBEAE5" : PRIMARY_SOFT,
+                  color: insufficientMember ? "#C0533E" : PRIMARY,
+                  fontWeight: 700,
+                  fontSize: 14,
+                  borderRadius: 8,
+                  padding: "6.5px 11px",
+                }}
+              >
                 RM {computedTotal.toFixed(2)}
               </div>
             </div>
           </div>
+
+          {insufficientMember && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#FBEAE5",
+                color: "#C0533E",
+                fontSize: 12.5,
+                fontWeight: 600,
+                borderRadius: 8,
+                padding: "9px 12px",
+              }}
+            >
+              ⚠️ Insufficient balance — {insufficientMember.name} only has RM {(insufficientMember.credit || 0).toFixed(2)} available
+            </div>
+          )}
         </Form>
       </Modal>
 

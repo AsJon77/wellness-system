@@ -79,6 +79,8 @@ type MemberPanelProps = {
   onMemberAdded?: (customer: Customer) => void;
   /** Called after a member's record changes (session used, top-up, etc.) */
   onCustomerUpdated?: (customer: Customer) => void;
+  /** Deep-link support: open straight into this member's profile instead of the list */
+  initialCustomerId?: number;
 };
 
 const MemberPanel: React.FC<MemberPanelProps> = ({
@@ -88,6 +90,7 @@ const MemberPanel: React.FC<MemberPanelProps> = ({
   onPickMember,
   onMemberAdded,
   onCustomerUpdated,
+  initialCustomerId,
 }) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("recent");
@@ -95,6 +98,14 @@ const MemberPanel: React.FC<MemberPanelProps> = ({
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+
+  // Deep-link: once customers are loaded, jump straight to the requested
+  // member's profile instead of showing the list first.
+  useEffect(() => {
+    if (initialCustomerId == null) return;
+    const match = customers.find((c) => c.id === initialCustomerId);
+    if (match) setSelected(match);
+  }, [initialCustomerId, customers]);
 
   const handleAddMember = () => {
     form.validateFields().then(async (values) => {
@@ -721,12 +732,19 @@ const AssignVisitModal: React.FC<{
 
   const handleSubmit = () => {
     form.validateFields().then(async (values) => {
-      setSaving(true);
-
       const rm = values.rm ?? 0;
       const coupon = values.coupon ?? 0;
       const oilText: string = values.oil || "";
       const total = rm + coupon + (Number(oilText) || 0);
+
+      if (total > (customer.credit || 0)) {
+        message.error(
+          `Insufficient balance — ${customer.name} has RM ${(customer.credit || 0).toFixed(2)}, this visit needs RM ${total.toFixed(2)}`,
+        );
+        return;
+      }
+
+      setSaving(true);
 
       const result = await attachMemberVisitToTherapist({
         date: today,
@@ -792,6 +810,7 @@ const AssignVisitModal: React.FC<{
       }}
       onOk={handleSubmit}
       okText="Submit"
+      okButtonProps={{ disabled: computedTotal > (customer.credit || 0) }}
       confirmLoading={saving}
       destroyOnClose
     >
@@ -849,8 +868,8 @@ const AssignVisitModal: React.FC<{
             <div style={{ fontSize: 14, marginBottom: 8 }}>Total</div>
             <div
               style={{
-                background: PRIMARY_SOFT,
-                color: PRIMARY,
+                background: computedTotal > (customer.credit || 0) ? "#FBEAE5" : PRIMARY_SOFT,
+                color: computedTotal > (customer.credit || 0) ? "#C0533E" : PRIMARY,
                 fontWeight: 700,
                 fontSize: 14,
                 borderRadius: 8,
@@ -862,9 +881,27 @@ const AssignVisitModal: React.FC<{
           </div>
         </div>
 
-        <div style={{ fontSize: 12, color: "#5C6B63", marginTop: -4 }}>
-          Total (RM + Coupon + Oil) is the package price — this is what gets deducted from {customer.name}'s credit balance.
-        </div>
+        {computedTotal > (customer.credit || 0) ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#FBEAE5",
+              color: "#C0533E",
+              fontSize: 12.5,
+              fontWeight: 600,
+              borderRadius: 8,
+              padding: "9px 12px",
+            }}
+          >
+            ⚠️ Insufficient balance — {customer.name} only has RM {(customer.credit || 0).toFixed(2)} available
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: "#5C6B63", marginTop: -4 }}>
+            Total (RM + Coupon + Oil) is the package price — this is what gets deducted from {customer.name}'s credit balance.
+          </div>
+        )}
       </Form>
 
       <Modal
@@ -1194,19 +1231,38 @@ const CreditsModal: React.FC<{
   const handleAddTopUp = () => {
     addForm.validateFields().then(async (values) => {
       setSaving(true);
-      const newCredit = await topUpCustomerCredit(customer, values.amount, values.note);
+      const result = await topUpCustomerCredit(
+        customer,
+        values.amount,
+        values.note,
+        values.packageName?.trim()
+          ? { name: values.packageName, sessionsTotal: values.sessionsTotal || 1 }
+          : undefined,
+      );
       setSaving(false);
 
-      if (newCredit === null) {
+      if (result === null) {
         message.error("Couldn't save top-up — please try again");
         return;
       }
 
-      message.success("Top-up recorded");
+      message.success(
+        values.packageName?.trim() ? "Top-up + new package recorded" : "Top-up recorded",
+      );
       addForm.resetFields();
       setAddOpen(false);
-      setBalance(newCredit);
-      onToppedUp({ ...customer, credit: newCredit });
+      setBalance(result.credit);
+      onToppedUp({
+        ...customer,
+        credit: result.credit,
+        ...(result.packageName
+          ? {
+              packageName: result.packageName,
+              sessionsTotal: result.sessionsTotal,
+              sessionsUsed: result.sessionsUsed,
+            }
+          : {}),
+      });
       load();
     });
   };
@@ -1290,6 +1346,11 @@ const CreditsModal: React.FC<{
                       <div style={{ fontSize: 11.5, color: "#5C6B63" }}>
                         {dayjs(`${t.date} ${t.time}`).format("h:mm A, DD/MM/YYYY")}
                       </div>
+                      {t.description && (
+                        <div style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: 2, wordBreak: "break-word" }}>
+                          {t.description}
+                        </div>
+                      )}
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div
@@ -1324,14 +1385,54 @@ const CreditsModal: React.FC<{
         confirmLoading={saving}
         destroyOnClose
       >
+        <div
+          style={{
+            fontSize: 12.5,
+            color: "#5C6B63",
+            background: "#F5F7F5",
+            borderRadius: 8,
+            padding: "8px 12px",
+            marginBottom: 16,
+          }}
+        >
+          Current package: <strong>{customer.packageName || "No active package"}</strong>
+          {customer.packageName ? ` (${Math.max((customer.sessionsTotal || 0) - (customer.sessionsUsed || 0), 0)}/${customer.sessionsTotal} left)` : ""}
+        </div>
+
         <Form form={addForm} layout="vertical">
           <Form.Item
             name="amount"
             label="Amount (RM)"
             rules={[{ required: true, message: "Enter an amount" }]}
           >
-            <InputNumber min={0.01} style={{ width: "100%" }} />
+            <InputNumber min={0.01} style={{ width: "100%" }} placeholder="e.g. 1000" />
           </Form.Item>
+
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "#5C6B63",
+              margin: "4px 0 10px",
+            }}
+          >
+            Buying a new package? (optional)
+          </div>
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <Form.Item name="packageName" label="Package name" style={{ flex: 1.4 }}>
+              <Input placeholder="e.g. F60 x10, Happy Hour x10" />
+            </Form.Item>
+            <Form.Item name="sessionsTotal" label="Sessions" style={{ flex: 1 }}>
+              <InputNumber min={1} style={{ width: "100%" }} placeholder="10" />
+            </Form.Item>
+          </div>
+          <div style={{ fontSize: 11.5, color: "#9CA3AF", marginTop: -10, marginBottom: 16 }}>
+            Filling this in replaces the current package and resets sessions used to 0 — leave blank to just top up credit.
+          </div>
+
           <Form.Item name="note" label="Note">
             <Input placeholder="e.g. Cash top-up at counter" />
           </Form.Item>

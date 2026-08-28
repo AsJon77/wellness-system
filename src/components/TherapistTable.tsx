@@ -15,7 +15,11 @@ import {
   Modal,
   Popover,
 } from "antd";
-import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+  InfoCircleOutlined,
+} from "@ant-design/icons";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { supabase } from "../supabase";
@@ -273,6 +277,9 @@ const TherapistTable: React.FC = () => {
 
   const [addTherapistOpen, setAddTherapistOpen] = useState(false);
   const [newTherapistName, setNewTherapistName] = useState("");
+  const [memberInfoCustomer, setMemberInfoCustomer] = useState<Customer | null>(
+    null,
+  );
 
   const addTherapist = () => {
     const title = newTherapistName.trim().toUpperCase();
@@ -1203,7 +1210,7 @@ const TherapistTable: React.FC = () => {
             type="default"
             disabled={!roleLoaded}
           >
-            📊 Dashboard
+            📊Dashboard
           </Button>
 
           <div style={{ marginLeft: 10 }}>
@@ -1576,7 +1583,32 @@ const TherapistTable: React.FC = () => {
                                   />
                                 </td>
 
-                                <td style={tdStyle}>
+                                <td
+                                  style={{ ...tdStyle, position: "relative" }}
+                                >
+                                  {entry.payment === "MEMBER" &&
+                                    entry.customerName && (
+                                      <InfoCircleOutlined
+                                        onClick={() => {
+                                          const matched = customers.find(
+                                            (c) =>
+                                              c.name === entry.customerName,
+                                          );
+                                          if (matched)
+                                            setMemberInfoCustomer(matched);
+                                        }}
+                                        style={{
+                                          position: "absolute",
+                                          top: 2,
+                                          right: 3,
+                                          fontSize: 11,
+                                          color: "#2F4F44",
+                                          cursor: "pointer",
+                                          zIndex: 2,
+                                        }}
+                                        title="View member info"
+                                      />
+                                    )}
                                   <Input
                                     disabled={!isAdmin}
                                     value={entry.oil}
@@ -1982,6 +2014,48 @@ const TherapistTable: React.FC = () => {
           placeholder="e.g. 19M or 8F"
           autoFocus
         />
+      </Modal>
+
+      <Modal
+        title={
+          <span
+            onClick={() => {
+              if (memberInfoCustomer) {
+                navigate(`/members?customerId=${memberInfoCustomer.id}`);
+              }
+            }}
+            style={{ cursor: "pointer" }}
+            title="View full profile"
+          >
+            Member Info
+          </span>
+        }
+        open={!!memberInfoCustomer}
+        onCancel={() => setMemberInfoCustomer(null)}
+        footer={null}
+        width={340}
+      >
+        {memberInfoCustomer && (
+          <div style={{ padding: "4px 0" }}>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>
+              {memberInfoCustomer.name}
+            </div>
+            <div
+              onClick={() =>
+                navigate(`/members?customerId=${memberInfoCustomer.id}`)
+              }
+              style={{
+                fontSize: 14,
+                color: "#2F4F44",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+              title="View full profile"
+            >
+              📱 {memberInfoCustomer.phone || "No phone on file"}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -220,12 +220,22 @@ export const topUpCustomerCredit = async (
   customer: Customer,
   amount: number,
   note?: string,
-): Promise<number | null> => {
+  newPackage?: { name: string; sessionsTotal: number },
+): Promise<{ credit: number; packageName?: string; sessionsTotal?: number; sessionsUsed?: number } | null> => {
   const newCredit = (customer.credit || 0) + amount;
+
+  const updatePayload: Record<string, unknown> = { credit: newCredit };
+
+  if (newPackage?.name.trim()) {
+    updatePayload.package_name = newPackage.name.trim();
+    updatePayload.package_price = amount;
+    updatePayload.sessions_total = newPackage.sessionsTotal;
+    updatePayload.sessions_used = 0;
+  }
 
   const { error } = await supabase
     .from("customers")
-    .update({ credit: newCredit })
+    .update(updatePayload)
     .eq("id", customer.id);
 
   if (error) {
@@ -233,14 +243,27 @@ export const topUpCustomerCredit = async (
     return null;
   }
 
+  const description = newPackage?.name.trim()
+    ? `Top-up RM ${amount.toFixed(2)} — Package: ${newPackage.name.trim()} (${newPackage.sessionsTotal} sessions)${note ? ` · ${note}` : ""}`
+    : note || `Top-up RM ${amount.toFixed(2)}`;
+
   await logMemberVisit({
     customerId: customer.id,
     type: "topup",
     amount,
-    description: note || `Top-up RM ${amount.toFixed(2)}`,
+    description,
   });
 
-  return newCredit;
+  return {
+    credit: newCredit,
+    ...(newPackage?.name.trim()
+      ? {
+          packageName: newPackage.name.trim(),
+          sessionsTotal: newPackage.sessionsTotal,
+          sessionsUsed: 0,
+        }
+      : {}),
+  };
 };
 
 // Adds sessions to a member's package (re-top-up) and logs it to the visit history.
