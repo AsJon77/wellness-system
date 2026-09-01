@@ -81,6 +81,7 @@ export const massagePackageSelectionGroups: MassagePackageSelectionGroup[] = [
       [
         { code: "F60", label: "Foot massage 60 mins", rm: 46, coupon: 13 },
         { code: "F90", label: "Foot massage 90 mins", rm: 71, coupon: 14 },
+        { code: "F120", label: "Foot massage 120 mins", rm: 92, coupon: 22 },
       ],
       [
         {
@@ -95,10 +96,17 @@ export const massagePackageSelectionGroups: MassagePackageSelectionGroup[] = [
           rm: 81,
           coupon: 14,
         },
+        {
+          code: "FS120",
+          label: "Foot and shoulder 120 mins",
+          rm: 110,
+          coupon: 18,
+        },
       ],
       [
         { code: "BD60", label: "Body massage 60 mins", rm: 61, coupon: 17 },
         { code: "BD90", label: "Body massage 90 mins", rm: 95, coupon: 14 },
+        { code: "BD120", label: "Body massage 120 mins", rm: 122, coupon: 17 },
       ],
       [
         {
@@ -106,6 +114,12 @@ export const massagePackageSelectionGroups: MassagePackageSelectionGroup[] = [
           label: "Head and shoulder 20 mins",
           rm: 0,
           coupon: 11.9,
+        },
+        {
+          code: "HS30",
+          label: "Head and shoulder 30 mins",
+          rm: 0,
+          coupon: 13.9,
         },
         {
           code: "HS60",
@@ -200,6 +214,14 @@ export const massagePackageSelectionGroups: MassagePackageSelectionGroup[] = [
           coupon: 26,
         },
         { code: "BD120", label: "Body massage 120 mins", rm: 126, coupon: 23 },
+      ],
+      [
+        {
+          code: "F90HS30",
+          label: "Foot 90 mins + Head and shoulder 30 mins",
+          rm: 123,
+          coupon: 26,
+        },
       ],
     ],
   },

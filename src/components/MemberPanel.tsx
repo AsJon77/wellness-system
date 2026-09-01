@@ -458,12 +458,55 @@ const MemberDetail: React.FC<{
 
   const comingSoon = (label: string) => message.info(`${label} — coming soon`);
 
+  const shareProfileOnWhatsApp = () => {
+    if (!c.phone) {
+      message.error(`No phone number on file for ${c.name}`);
+      return;
+    }
+
+    // Malaysian numbers are usually stored as "01xxxxxxxx"; wa.me needs the
+    // country code with no leading zero (e.g. "601xxxxxxxx").
+    const digits = c.phone.replace(/\D/g, "");
+    const waNumber = digits.startsWith("0")
+      ? "60" + digits.slice(1)
+      : digits.startsWith("60")
+        ? digits
+        : "60" + digits;
+
+    // Built from explicit Unicode codepoints rather than pasted emoji
+    // characters — those can get silently corrupted into "◇" boxes by
+    // certain editors/encodings, which is exactly what was happening here.
+    const PACKAGE_EMOJI = String.fromCodePoint(0x1f4e6); // 📦
+    const MONEY_EMOJI = String.fromCodePoint(0x1f4b0); // 💰
+    const STAR_EMOJI = String.fromCodePoint(0x2b50); // ⭐
+    const CLOCK_EMOJI = String.fromCodePoint(0x1f550); // 🕐
+    const HERB_EMOJI = String.fromCodePoint(0x1f33f); // 🌿
+
+    const lines = [
+      `Hi ${c.name}, here's your Zenland Wellness membership summary:`,
+      "",
+      c.packageName
+        ? `${PACKAGE_EMOJI} Package: ${c.packageName} (${remaining}/${c.sessionsTotal} sessions left)`
+        : `${PACKAGE_EMOJI} Package: No active package`,
+      `${MONEY_EMOJI} Credit balance: RM ${(c.credit || 0).toFixed(2)}`,
+      `${STAR_EMOJI} Points: ${c.points || 0}`,
+      lastVisit
+        ? `${CLOCK_EMOJI} Last visit: ${dayjs(lastVisit.date).format("D MMM YYYY")} - ${lastVisit.description || "Session"}`
+        : "",
+      "",
+      `Thank you for being a valued member! ${HERB_EMOJI}`,
+    ].filter(Boolean);
+
+    const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(url, "_blank");
+  };
+
   const quickActions = [
     { icon: <ClockCircleOutlined />, label: "Breakdown", onClick: () => setBreakdownOpen(true) },
     { icon: <FileTextOutlined />, label: "Remarks", onClick: () => comingSoon("Remarks") },
     { icon: <CheckSquareOutlined />, label: "Checklist", onClick: () => comingSoon("Checklist") },
     { icon: <TeamOutlined />, label: "Referral", onClick: () => comingSoon("Referral") },
-    { icon: <MessageOutlined />, label: "Message", onClick: () => comingSoon("Message") },
+    { icon: <MessageOutlined />, label: "Message", onClick: shareProfileOnWhatsApp },
     { icon: <FormOutlined />, label: "Form", onClick: () => setFormOpen(true) },
     { icon: <FileOutlined />, label: "Document", onClick: () => comingSoon("Document") },
     { icon: <SoundOutlined />, label: "Broadcast", onClick: () => comingSoon("Broadcast") },
