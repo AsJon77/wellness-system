@@ -190,6 +190,27 @@
   opacity: 1 !important;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh; /* accounts for mobile browsers' collapsing address bar */
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+}
+
 body {
   background: #f5f7fa;
 }

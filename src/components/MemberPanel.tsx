@@ -473,28 +473,23 @@ const MemberDetail: React.FC<{
         ? digits
         : "60" + digits;
 
-    // Built from explicit Unicode codepoints rather than pasted emoji
-    // characters — those can get silently corrupted into "◇" boxes by
-    // certain editors/encodings, which is exactly what was happening here.
-    const PACKAGE_EMOJI = String.fromCodePoint(0x1f4e6); // 📦
-    const MONEY_EMOJI = String.fromCodePoint(0x1f4b0); // 💰
-    const STAR_EMOJI = String.fromCodePoint(0x2b50); // ⭐
-    const CLOCK_EMOJI = String.fromCodePoint(0x1f550); // 🕐
-    const HERB_EMOJI = String.fromCodePoint(0x1f33f); // 🌿
-
+    // Emoji sent through a wa.me deep link can render as broken "◇" boxes
+    // on some WhatsApp clients (this is a WhatsApp-side rendering limit,
+    // not something fixable from our end) — so we use WhatsApp's own
+    // *bold* markdown and plain dashes instead, which always render fine.
     const lines = [
-      `Hi ${c.name}, here's your Zenland Wellness membership summary:`,
+      `Hi ${c.name}, here's your *Zenland Wellness* membership summary:`,
       "",
       c.packageName
-        ? `${PACKAGE_EMOJI} Package: ${c.packageName} (${remaining}/${c.sessionsTotal} sessions left)`
-        : `${PACKAGE_EMOJI} Package: No active package`,
-      `${MONEY_EMOJI} Credit balance: RM ${(c.credit || 0).toFixed(2)}`,
-      `${STAR_EMOJI} Points: ${c.points || 0}`,
+        ? `- Package: ${c.packageName} (${remaining}/${c.sessionsTotal} sessions left)`
+        : "- Package: No active package",
+      `- Credit balance: *RM ${(c.credit || 0).toFixed(2)}*`,
+      `- Points: ${c.points || 0}`,
       lastVisit
-        ? `${CLOCK_EMOJI} Last visit: ${dayjs(lastVisit.date).format("D MMM YYYY")} - ${lastVisit.description || "Session"}`
+        ? `- Last visit: ${dayjs(lastVisit.date).format("D MMM YYYY")} - ${lastVisit.description || "Session"}`
         : "",
       "",
-      `Thank you for being a valued member! ${HERB_EMOJI}`,
+      "Thank you for being a valued member!",
     ].filter(Boolean);
 
     const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
