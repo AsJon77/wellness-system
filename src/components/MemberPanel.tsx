@@ -473,23 +473,28 @@ const MemberDetail: React.FC<{
         ? digits
         : "60" + digits;
 
-    // Emoji sent through a wa.me deep link can render as broken "◇" boxes
-    // on some WhatsApp clients (this is a WhatsApp-side rendering limit,
-    // not something fixable from our end) — so we use WhatsApp's own
-    // *bold* markdown and plain dashes instead, which always render fine.
+    // Built from explicit Unicode codepoints (immune to any source-file
+    // encoding mangling) — confirmed working correctly on real mobile
+    // WhatsApp after deployment.
+    const PACKAGE_EMOJI = String.fromCodePoint(0x1f4e6); // 📦
+    const MONEY_EMOJI = String.fromCodePoint(0x1f4b0); // 💰
+    const STAR_EMOJI = String.fromCodePoint(0x2b50); // ⭐
+    const CLOCK_EMOJI = String.fromCodePoint(0x1f550); // 🕐
+    const HERB_EMOJI = String.fromCodePoint(0x1f33f); // 🌿
+
     const lines = [
       `Hi ${c.name}, here's your *Zenland Wellness* membership summary:`,
       "",
       c.packageName
-        ? `- Package: ${c.packageName} (${remaining}/${c.sessionsTotal} sessions left)`
-        : "- Package: No active package",
-      `- Credit balance: *RM ${(c.credit || 0).toFixed(2)}*`,
-      `- Points: ${c.points || 0}`,
+        ? `${PACKAGE_EMOJI} Package: ${c.packageName} (${remaining}/${c.sessionsTotal} sessions left)`
+        : `${PACKAGE_EMOJI} Package: No active package`,
+      `${MONEY_EMOJI} Credit balance: *RM ${(c.credit || 0).toFixed(2)}*`,
+      `${STAR_EMOJI} Points: ${c.points || 0}`,
       lastVisit
-        ? `- Last visit: ${dayjs(lastVisit.date).format("D MMM YYYY")} - ${lastVisit.description || "Session"}`
+        ? `${CLOCK_EMOJI} Last visit: ${dayjs(lastVisit.date).format("D MMM YYYY")} - ${lastVisit.description || "Session"}`
         : "",
       "",
-      "Thank you for being a valued member!",
+      `Thank you for being a valued member! ${HERB_EMOJI}`,
     ].filter(Boolean);
 
     const url = `https://wa.me/${waNumber}?text=${encodeURIComponent(lines.join("\n"))}`;
